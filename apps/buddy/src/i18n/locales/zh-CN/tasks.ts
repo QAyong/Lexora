@@ -1,6 +1,8 @@
 export default {
   'desktop.chat.panelOpened': '已展开资源面板',
   'desktop.chat.panelClosed': '已收起资源面板',
+  'desktop.chat.collapse': '收起聊天区',
+  'desktop.chat.open': '展开聊天区',
   'desktop.chat.panelActorSystem': '系统',
   'desktop.chat.panelActorUser': '你',
   'desktop.context.controlFailed': '资源面板操作失败，请重试。',

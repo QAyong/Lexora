@@ -25,6 +25,7 @@ const props = defineProps<{
   appSidebarCollapsed: boolean
   contextAvailable: boolean
   contextOpen: boolean
+  contextIsChat: boolean
   contextSwapAvailable: boolean
   contextSwapped: boolean
   language: BuddyLocale
@@ -48,6 +49,9 @@ const platform = computed(() => props.appInfo?.platform ?? 'linux')
 const maximizeLabel = computed(() => isMaximized.value
   ? t('desktop.window.restore')
   : t('desktop.window.maximize'))
+const contextToggleLabel = computed(() => props.contextIsChat
+  ? t(props.contextOpen ? 'desktop.chat.collapse' : 'desktop.chat.open')
+  : t(props.contextOpen ? 'desktop.context.collapse' : 'desktop.context.open'))
 let windowStateVersion = 0
 
 const rendererCommandHandlers = {
@@ -197,7 +201,7 @@ function applyWindowState(state: DesktopWindowState) {
         </button>
         <button
           v-if="contextAvailable"
-          :aria-label="t(contextOpen ? 'desktop.context.collapse' : 'desktop.context.open')"
+          :aria-label="contextToggleLabel"
           :aria-expanded="contextOpen"
           class="desktop-title-bar__control"
           :class="{ 'is-active': contextOpen }"

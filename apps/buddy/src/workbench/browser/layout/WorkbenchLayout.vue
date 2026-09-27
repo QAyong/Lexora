@@ -10,12 +10,14 @@ const props = withDefaults(defineProps<{
   language: BuddyLocale
   contextVisible?: boolean
   contextOnLeft?: boolean
+  workspaceVisible?: boolean
   sidebarCollapsible?: boolean
   sidebarResizable?: boolean
   workspaceMinimumWidth?: number
 }>(), {
   contextVisible: true,
   contextOnLeft: false,
+  workspaceVisible: true,
   sidebarCollapsible: false,
   sidebarResizable: false,
   workspaceMinimumWidth: 288,
@@ -165,7 +167,7 @@ onBeforeUnmount(() => {
     >
       <DesktopIcon class="desktop-workbench-layout__sidebar-chevron" name="sidebarChevron" />
     </button>
-    <main class="desktop-workbench-layout__workspace" :class="{ 'is-context-leading': contextOnLeft }">
+    <main v-show="workspaceVisible" class="desktop-workbench-layout__workspace" :class="{ 'is-context-leading': contextOnLeft }" :aria-hidden="!workspaceVisible" :inert="!workspaceVisible">
       <slot />
     </main>
     <div

@@ -3,6 +3,8 @@ import type zhCN from '../zh-CN/tasks'
 export default {
   'desktop.chat.panelOpened': 'Resource panel opened',
   'desktop.chat.panelClosed': 'Resource panel closed',
+  'desktop.chat.collapse': 'Collapse chat',
+  'desktop.chat.open': 'Expand chat',
   'desktop.chat.panelActorSystem': 'System',
   'desktop.chat.panelActorUser': 'You',
   'desktop.context.controlFailed': 'Could not control the resource panel. Try again.',

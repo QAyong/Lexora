@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DesktopShellBindings } from './desktopShellBindings'
-import { computed, shallowRef } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DesktopStartupScreen from '@/app/bootstrap/DesktopStartupScreen.vue'
 import DesktopAppSidebar from '@/app/shell/DesktopAppSidebar.vue'
@@ -20,6 +20,28 @@ const startupVisible = computed(() => !bindings.lifecycle.state.value.hasBeenRea
 const activeView = computed(() => bindings.pages.current.value)
 const navigation = computed(() => bindings.pages.navigation.value)
 const contextOnLeft = shallowRef(false)
+const chatPaneHidden = shallowRef(false)
+const rightRegionIsChat = computed(() => contextOnLeft.value && bindings.resources.isOpen.value)
+const rightRegionOpen = computed(() => rightRegionIsChat.value ? !chatPaneHidden.value : bindings.resources.isOpen.value)
+
+watch([activeView, bindings.resources.isOpen], ([view, resourcePanelOpen]) => {
+  if (view !== 'lexora.tasks' || !resourcePanelOpen)
+    chatPaneHidden.value = false
+})
+
+function toggleCurrentRightRegion() {
+  if (rightRegionIsChat.value) {
+    chatPaneHidden.value = !chatPaneHidden.value
+    return
+  }
+  bindings.resources.toggle()
+}
+
+function toggleContextPosition() {
+  contextOnLeft.value = !contextOnLeft.value
+  chatPaneHidden.value = false
+}
+
 function navigate(id: string) {
   const entry = navigation.value.find(entry => entry.id === id)
   if (entry)
@@ -35,11 +57,12 @@ function navigate(id: string) {
       :app-sidebar-collapsed="appSidebarCollapsed"
       :language="language"
       :context-available="bindings.contextPanelGlobal.value || activeView === 'lexora.tasks'"
-      :context-open="bindings.resources.isOpen.value"
+      :context-open="rightRegionOpen"
       :context-swap-available="activeView === 'lexora.tasks' && bindings.resources.isOpen.value"
       :context-swapped="contextOnLeft"
-      @toggle-context="bindings.resources.toggle"
-      @toggle-context-position="contextOnLeft = !contextOnLeft"
+      :context-is-chat="rightRegionIsChat"
+      @toggle-context="toggleCurrentRightRegion"
+      @toggle-context-position="toggleContextPosition"
       @toggle-app-sidebar="bindings.toggleAppSidebar"
     />
     <div class="desktop-shell__body">
@@ -64,7 +87,7 @@ function navigate(id: string) {
             />
           </Transition>
           <WorkbenchMountPoint target="workbench" class="desktop-shell__workbench">
-            <DesktopWorkbenchArea :bindings="bindings" :tasks-visible="activeView === 'lexora.tasks'" :context-on-left="contextOnLeft" />
+            <DesktopWorkbenchArea :bindings="bindings" :tasks-visible="activeView === 'lexora.tasks'" :context-on-left="contextOnLeft" :chat-pane-hidden="chatPaneHidden" />
           </WorkbenchMountPoint>
         </div>
         <template #view="{ view, visible }">
