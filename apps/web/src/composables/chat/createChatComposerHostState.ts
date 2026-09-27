@@ -1,6 +1,6 @@
 import type { ComputedRef } from 'vue'
 import type { SendChatComposerMessageInput } from './createChatStreamController'
-import type { AiModelModality, ChatModelItem, ChatUploadedAsset } from '@/apis/chat'
+import type { AiModelModality, ChatModelItem, ChatSessionReference, ChatUploadedAsset } from '@/apis/chat'
 import type {
   ChatComposerAttachment,
   ChatComposerContentJSON,
@@ -44,6 +44,7 @@ export function createChatComposerHostState(options: {
 }) {
   const contentJSON = shallowRef<ChatComposerContentJSON>(createEmptyChatComposerContentJSON())
   const attachments = shallowRef<ChatComposerAttachment[]>([])
+  const sessionReferences = shallowRef<ChatSessionReference[]>([])
   const highlightAttachmentId = shallowRef<string | null>(null)
   const beforeSendHandlers = new Set<ChatComposerBeforeSendHandler>()
   const afterSendHandlers = new Set<ChatComposerAfterSendHandler>()
@@ -70,6 +71,7 @@ export function createChatComposerHostState(options: {
   function resetComposer() {
     contentJSON.value = createEmptyChatComposerContentJSON()
     attachments.value = []
+    sessionReferences.value = []
     highlightAttachmentId.value = null
   }
 
@@ -162,6 +164,7 @@ export function createChatComposerHostState(options: {
   function restoreComposer(payload: ChatComposerSubmitPayload) {
     contentJSON.value = payload.contentJSON
     attachments.value = payload.attachments
+    sessionReferences.value = payload.sessionReferences
   }
 
   async function handleUploadImageFiles(files: File[]) {
@@ -283,6 +286,7 @@ export function createChatComposerHostState(options: {
   return {
     attachments,
     contentJSON,
+    sessionReferences,
     handleUploadAttachmentFiles,
     handleUploadImageFiles,
     handleSend,

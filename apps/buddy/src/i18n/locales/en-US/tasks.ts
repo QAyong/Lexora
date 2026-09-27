@@ -71,6 +71,7 @@ export default {
   'desktop.tasks.spaceActiveRunUpdateWarning': 'This space has active tasks. Name and memory updates apply only to future runs.',
   'desktop.tasks.editSpaceTitle': 'Edit space',
   'desktop.tasks.moreActions': 'More actions',
+  'desktop.tasks.copyReference': 'Copy conversation reference',
   'desktop.tasks.renameTask': 'Rename',
   'desktop.tasks.untitled': 'Untitled task',
   'desktop.tasks.tasksSection': 'Tasks',

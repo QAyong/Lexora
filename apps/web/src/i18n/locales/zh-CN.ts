@@ -1424,6 +1424,8 @@ export const zhCN = {
       directTitle: '站内对话',
       empty: '暂无对话',
       more: '更多操作',
+      copyReference: '复制会话引用',
+      removeReference: '移除会话引用「{title}」',
       multiSelect: '多选',
       rename: '重命名',
       renamePlaceholder: '对话名称',

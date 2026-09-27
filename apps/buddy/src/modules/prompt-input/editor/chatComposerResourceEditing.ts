@@ -83,7 +83,11 @@ export const ChatComposerDocument = Node.create({
   content: 'paragraph+',
 
   addAttributes() {
-    return { panelResourceIds: { default: [], rendered: false }, quotes: { default: null, rendered: false } }
+    return {
+      panelResourceIds: { default: [], rendered: false },
+      quotes: { default: null, rendered: false },
+      sessionReferences: { default: [], rendered: false },
+    }
   },
 
   addProseMirrorPlugins() {
@@ -310,7 +314,8 @@ export function replaceChatComposerDocument(editor: Editor, content: BuddyUserCo
   return dispatchResourceEdit(editor, editor.state.tr
     .replaceWith(0, editor.state.doc.content.size, document.content)
     .setDocAttribute('panelResourceIds', document.attrs.panelResourceIds)
-    .setDocAttribute('quotes', document.attrs.quotes))
+    .setDocAttribute('quotes', document.attrs.quotes)
+    .setDocAttribute('sessionReferences', document.attrs.sessionReferences))
 }
 
 function dispatchResourceEdit(editor: Editor, transaction: Transaction): boolean {

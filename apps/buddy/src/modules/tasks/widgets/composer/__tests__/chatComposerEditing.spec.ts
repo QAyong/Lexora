@@ -128,6 +128,33 @@ async function mountComposer(options: {
 }
 
 describe('chat composer editing', () => {
+  it('turns pasted session references into deduplicated composer metadata', async () => {
+    const flow = await mountComposer()
+    flow.editor.commands.setContent(createChatComposerContentFromText('请总结这段会话'))
+    const clipboardText = [
+      '[lexora-session-reference]\nid: session-1\ntitle: 旧会话\n[/lexora-session-reference]',
+      '[lexora-session-reference]\nid: session-1\ntitle: 旧会话\n[/lexora-session-reference]',
+    ].join('\n\n')
+    const paste = () => {
+      const event = new Event('paste', { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'clipboardData', {
+        value: { files: [], getData: (type: string) => type === 'text/plain' ? clipboardText : '' },
+      })
+      flow.editor.view.dom.dispatchEvent(event)
+    }
+
+    paste()
+    paste()
+    await nextTick()
+
+    expect(flow.editor.getText()).toBe('请总结这段会话')
+    expect(flow.composer.sessionReferences.value).toEqual([{ id: 'session-1', title: '旧会话' }])
+    expect(chatComposerDocumentToUserContent(flow.editor.getJSON()).sessionReferences).toEqual([{ id: 'session-1', title: '旧会话' }])
+
+    flow.composer.removeSessionReference('session-1')
+    expect(flow.composer.sessionReferences.value).toEqual([])
+  })
+
   it.each(['select', 'submit'] as const)('submits a run action with its arguments through %s', async (source) => {
     const flow = await mountComposer()
     const prefix = source === 'select' ? '/com' : '/compact'

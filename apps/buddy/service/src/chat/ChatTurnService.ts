@@ -170,7 +170,6 @@ export class ChatTurnService {
     if (draft.scope.kind === 'message_edit')
       throw new BuddyServiceError('VALIDATION_FAILED')
     const followupScope = draft.scope.kind === 'message_followup' ? draft.scope : null
-    const content = buddyUserContentToText(draft.content).trim()
     const scope = resolveDraftScope(draft.scope)
     if (scope.conversationId && this.#options.conversationLifecycle.isDeleting(scope.conversationId))
       throw new BuddyServiceError('VALIDATION_FAILED')
@@ -214,14 +213,17 @@ export class ChatTurnService {
     if (this.#options.conversationLifecycle.isDeleting(conversationId))
       throw new BuddyServiceError('VALIDATION_FAILED')
 
+    const composerContent = this.#resolveSessionReferences(draft.content, space?.id ?? null)
+    const content = buddyUserContentToText(composerContent).trim()
+
     const selectedModel = await this.#resolveSelection(null, null, draft.modelSelection)
     const resourceInputs = await requireValue(this.#options.composerResources ?? null)
-      .resolveInput(input.draftId, draft.content, {
+      .resolveInput(input.draftId, composerContent, {
         branchId: existingConversation ? parentBranchId : null,
         conversationId: existingConversation?.id ?? null,
         spaceId: space?.id ?? null,
       }, selectedModel)
-    if (!content && resourceInputs.length === 0 && !draft.content.quotes?.length)
+    if (!content && resourceInputs.length === 0 && !composerContent.quotes?.length)
       throw new BuddyServiceError('VALIDATION_FAILED')
     const attachmentIds = getResourceAttachmentIds(resourceInputs)
 
@@ -235,7 +237,7 @@ export class ChatTurnService {
     } = await this.#prepareTurnMaterialization({
       attachmentIds,
       composer: {
-        content: draft.content,
+        content: composerContent,
         resourceIds: resourceInputs.map(resource => resource.resourceId),
         resources: resourceInputs,
       },
@@ -286,9 +288,9 @@ export class ChatTurnService {
         serviceTier: selection.serviceTier,
       },
       runId,
-      title: createConversationTitle(draft.content, attachmentPrompt.records),
+      title: createConversationTitle(composerContent, attachmentPrompt.records),
       userMessageContent: createPersistedUserMessageContent(
-        draft.content,
+        composerContent,
         bindResourceAttachments(resourceInputs, persistedAttachmentIds),
       ),
       userMessageId,
@@ -345,12 +347,15 @@ export class ChatTurnService {
     }
     const forkedFromMessageId = sourceIndex > 0 ? history[sourceIndex - 1]?.id ?? null : null
     const space = this.#resolveConversationSpace(conversation)
-    const content = draft ? buddyUserContentToText(draft.content).trim() : ''
+    const composerContent = draft
+      ? this.#resolveSessionReferences(draft.content, space?.id ?? null)
+      : null
+    const content = composerContent ? buddyUserContentToText(composerContent).trim() : ''
     const selectedModel = draft ? await this.#resolveSelection(null, null, draft.modelSelection) : undefined
     const resourceInputs = draft
       ? await requireValue(this.#options.composerResources ?? null).resolveInput(
           draft.draftId,
-          draft.content,
+          composerContent!,
           { branchId: parentBranchId, conversationId: conversation.id, spaceId: space?.id ?? null },
           selectedModel,
         )
@@ -368,7 +373,7 @@ export class ChatTurnService {
     } = await this.#prepareTurnMaterialization({
       attachmentIds,
       composer: draft
-        ? { content: draft.content, resourceIds: resourceInputs.map(resource => resource.resourceId), resources: resourceInputs }
+        ? { content: composerContent!, resourceIds: resourceInputs.map(resource => resource.resourceId), resources: resourceInputs }
         : undefined,
       content: '',
       contextItems: [],
@@ -430,7 +435,7 @@ export class ChatTurnService {
             sourceUserMessageId: input.userMessageId,
             title: null,
             userMessageContent: createPersistedUserMessageContent(
-              draft!.content,
+              composerContent!,
               persistedResourceSnapshots,
             ),
             userMessageId,
@@ -501,6 +506,28 @@ export class ChatTurnService {
   async cancel(runId: string) {
     await this.#options.runner.cancel(runId)
     return this.#publicRun(this.#requireRun(runId))
+  }
+
+  #resolveSessionReferences(content: BuddyUserContentV1, spaceId: string | null): BuddyUserContentV1 {
+    const references = content.sessionReferences ?? []
+    if (!references.length)
+      return content
+
+    const seen = new Set<string>()
+    const normalized = references.flatMap((reference) => {
+      if (seen.has(reference.id))
+        return []
+      seen.add(reference.id)
+      const conversation = this.#options.conversations.findById(reference.id)
+      if (!conversation || conversation.deletedAt !== null || (conversation.spaceId !== null && conversation.spaceId !== spaceId))
+        throw new BuddyServiceError('VALIDATION_FAILED')
+      return [{
+        id: conversation.id,
+        title: conversation.title?.trim() || reference.title,
+      }]
+    })
+
+    return { ...content, sessionReferences: normalized }
   }
 
   #findReplay(

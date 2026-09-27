@@ -1,5 +1,6 @@
 import type { BuddyThinkingLevel } from '../../../../shared/conversation/modelSelection'
 import type { RuntimePreferences } from '../../../../shared/runtime/runtimePreferences'
+import type { ChatSessionReference } from '@haohaoxue/lexora-shared/chat'
 import type { ProviderExecutionModelResolver } from '../../providers/ProviderExecutionModelResolver'
 import type { ConversationRepository } from '../../storage/conversationRepository'
 import type { RunRepository } from '../../storage/runRepository'
@@ -33,6 +34,7 @@ export interface BuddySessionFactoryInput {
   blueprint: BuddySessionBlueprint
   piSessionFile: string | null
   runId: string
+  sessionReferences?: readonly ChatSessionReference[]
   signal: AbortSignal
   thinkingLevel?: BuddyThinkingLevel
 }
@@ -103,6 +105,8 @@ export class BuddySessionFactory {
         signal: input.signal,
         spaceId: blueprint.space?.id ?? null,
         services: this.#options.services,
+        enableSessionReferences: true,
+        sessionReferences: input.sessionReferences,
       })
     })
     const tree = await this.#options.tree.open(run, blueprint.canonicalRoot, selected.model)

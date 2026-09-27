@@ -1,5 +1,6 @@
 import type { BuddyServiceTier } from '../../../../shared/conversation/modelSelection'
 import type { BuddyApprovalPolicy } from '../../../../shared/permissions/approvalPolicy'
+import type { ChatSessionReference } from '@haohaoxue/lexora-shared/chat'
 import type { BuddyExecutionProfile } from '../../../../shared/permissions/executionProfile'
 import type { BuddySessionMode } from '../../../../shared/permissions/sessionMode'
 import type { ApprovalService } from '../../approvals/ApprovalService'
@@ -8,6 +9,7 @@ import type { ChangeCaptureService } from '../../changes/ChangeCaptureService'
 import type { DirectoryGrantMutation, DirectoryGrantService } from '../../directories/DirectoryGrantService'
 import type { DirectoryGrant } from '../../directories/resolveGrantedPath'
 import type { ShellSandboxClient } from '../../sandbox/ShellSandboxClient'
+import type { ConversationRepository } from '../../storage/conversationRepository'
 import type { BuddyInputReferenceStore } from '../context/BuddyInputReference'
 import type { BuddyCapabilityFactory } from './BuddyCapability'
 import type { BuddyExtensionRunContextStore } from './BuddyExtensionRunContext'
@@ -21,6 +23,7 @@ import { createChangeCaptureExtension } from './changeCaptureExtension'
 import { createChatQueueExtension } from './chatQueueExtension'
 import { createToolDiscoveryCapability } from './discovery/toolDiscoveryExtension'
 import { createInputReferenceExtension } from './inputReferenceExtension'
+import { createSessionReferenceCapability } from './sessionReferenceCapability'
 import { createToolPolicyExtension } from './toolPolicyExtension'
 
 export interface BuddySessionExtensionServices {
@@ -29,6 +32,8 @@ export interface BuddySessionExtensionServices {
   approvalService: Pick<ApprovalService, 'request'>
   attachmentService: Pick<AttachmentService, 'materializePiInputImages' | 'materializeDocumentInputs' | 'materializeInputResources' | 'getInputMetadata'>
   changeCaptureService: Pick<ChangeCaptureService, 'beginFileTool' | 'beginWorkspaceTool' | 'finalizeRun' | 'finishFileTool' | 'finishWorkspaceTool' | 'markPartial'>
+  conversations?: Pick<ConversationRepository, 'findById' | 'listBranchMessages'>
+  getSessionReferences?: (runId: string) => readonly ChatSessionReference[]
   createCapabilities: BuddyCapabilityFactory
   directoryGrants: Pick<DirectoryGrantService, 'grant'>
   shellSandbox?: Pick<ShellSandboxClient, 'exec'>
@@ -45,6 +50,8 @@ export interface CreateBuddySessionExtensionsOptions {
   signal: AbortSignal
   spaceId: string | null
   services: BuddySessionExtensionServices
+  enableSessionReferences?: boolean
+  sessionReferences?: readonly ChatSessionReference[]
 }
 
 export interface BuddySessionExtensions {
@@ -77,6 +84,14 @@ export async function createBuddySessionExtensions(
       ? { id: options.spaceId, kind: 'space' }
       : { id: options.conversationId, kind: 'conversation' },
   })
+  const sessionReferenceCapability = (options.enableSessionReferences || options.sessionReferences?.length) && services.conversations
+    ? createSessionReferenceCapability({
+        conversationId: options.conversationId,
+        conversations: services.conversations,
+        getReferences: () => services.getSessionReferences?.(runContext.current?.runId ?? '') ?? options.sessionReferences ?? [],
+        spaceId: options.spaceId,
+      })
+    : null
   const capabilities = [...await services.createCapabilities({
     conversationId: options.conversationId,
     executionProfile: options.executionProfile,
@@ -86,7 +101,7 @@ export async function createBuddySessionExtensions(
     grants,
     sessionMode: options.sessionMode,
     signal: options.signal,
-  })]
+  }), ...(sessionReferenceCapability ? [sessionReferenceCapability] : [])]
   const execution = resolveShellExecution(options.executionProfile)
   if (execution.boundary === 'sandbox') {
     capabilities.push(createShellCapability({

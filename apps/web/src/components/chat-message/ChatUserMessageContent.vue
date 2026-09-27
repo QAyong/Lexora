@@ -19,6 +19,7 @@ const props = defineProps<ChatUserMessageContentProps>()
 
 const { t } = useI18n({ useScope: 'global' })
 const panelAttachments = computed(() => getPanelAttachments(props.message.metadata.attachments))
+const sessionReferences = computed(() => props.message.metadata.sessionReferences ?? [])
 const hasPanelAttachments = computed(() => panelAttachments.value.length > 0)
 const bodyText = computed(() => serializeChatComposerContent(props.message.metadata.contentJSON).content || props.message.content)
 const hasBodyText = computed(() => bodyText.value.trim().length > 0)
@@ -60,7 +61,7 @@ const skillCommand = computed(() => {
 
   return null
 })
-const hasVisibleContent = computed(() => skillCommand.value !== null || hasPanelAttachments.value || hasBodyText.value)
+const hasVisibleContent = computed(() => skillCommand.value !== null || hasPanelAttachments.value || sessionReferences.value.length > 0 || hasBodyText.value)
 
 function getDisplayLabel(attachment: (typeof panelAttachments.value)[number]) {
   return getAttachmentDisplayLabel(attachment, {
@@ -97,6 +98,17 @@ function getDisplayLabel(attachment: (typeof panelAttachments.value)[number]) {
         {{ getDisplayLabel(attachment) }}
       </span>
     </div>
+    <div v-if="sessionReferences.length" class="chat-user-message-content__contexts">
+      <span
+        v-for="reference in sessionReferences"
+        :key="reference.id"
+        class="chat-user-message-content__context chat-user-message-content__session-reference"
+        :title="reference.title"
+      >
+        <SvgIcon category="ui" icon="chat" size="0.75rem" class="shrink-0" />
+        <span class="min-w-0 truncate">{{ reference.title }}</span>
+      </span>
+    </div>
     <div v-if="hasBodyText" class="chat-user-message-content__body">
       {{ bodyText }}
     </div>
@@ -130,6 +142,11 @@ function getDisplayLabel(attachment: (typeof panelAttachments.value)[number]) {
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .chat-user-message-content__session-reference {
+    gap: 0.25rem;
+    max-width: 14rem;
   }
 
   .chat-user-message-content__skill-command {

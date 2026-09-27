@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ChatSessionReferencesSchema } from '@haohaoxue/lexora-shared/chat'
 import { skillReferenceSchema } from '../skills/skillApi'
 import { buddyLocalResourceSchema } from './localResource'
 
@@ -64,6 +65,7 @@ export const buddyUserContentV1Schema = z.object({
     'Duplicate panel resource',
   ).readonly(),
   quotes: buddyMessageQuotesSchema.optional(),
+  sessionReferences: ChatSessionReferencesSchema.readonly().optional(),
   version: z.literal(1),
 }).strict().readonly()
 

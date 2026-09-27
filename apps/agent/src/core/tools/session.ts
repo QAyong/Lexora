@@ -1,6 +1,7 @@
 import type { ChatMemoryOperationProjection } from '@haohaoxue/lexora-contracts'
 import type { BaseMessage, ToolCall, ToolMessage } from '@langchain/core/messages'
 import type { StructuredToolInterface } from '@langchain/core/tools'
+import type { AgentChatApiClient } from '../../clients/chat'
 import type { AgentMemoryApiClient } from '../../clients/memory'
 import type { AgentSkillApiClient } from '../../clients/skills'
 import type { AgentChatModel } from '../../integrations/model-providers/chat-model'
@@ -30,6 +31,7 @@ export interface RuntimeToolLoopInput {
   model: AgentChatModel
   messages: BaseMessage[]
   sessionId: string
+  chatApi?: AgentChatApiClient
   context: AgentGraphContext | undefined
   memoryApi?: AgentMemoryApiClient
   skillApi?: AgentSkillApiClient
@@ -42,6 +44,7 @@ export class RuntimeToolLoopSession {
   readonly model: AgentChatModel
   readonly messages: BaseMessage[]
   readonly sessionId: string
+  readonly chatApi: AgentChatApiClient | undefined
   readonly context: AgentGraphContext | undefined
   readonly signal: AbortSignal | undefined
 
@@ -58,6 +61,7 @@ export class RuntimeToolLoopSession {
     this.model = input.model
     this.messages = [...input.messages]
     this.sessionId = input.sessionId
+    this.chatApi = input.chatApi
     this.context = input.context
     this.signal = input.signal
     this.memoryApi = input.memoryApi
@@ -103,6 +107,8 @@ export class RuntimeToolLoopSession {
 
   async executeSkillActions(toolCalls: ToolCall[]) {
     const result = await executeRuntimeToolCallsWithEvents({
+      chatApi: this.chatApi,
+      model: this.model,
       memoryApi: this.memoryApi,
       webSearch: this.webSearch,
       skillApi: this.skillApi,
@@ -153,6 +159,8 @@ export class RuntimeToolLoopSession {
   private resolveRuntimeToolRegistry() {
     return createRuntimeToolRegistry({
       context: this.context,
+      chatApi: this.chatApi,
+      model: this.model,
       memoryApi: this.memoryApi,
       webSearch: this.webSearch,
       skillApi: this.skillApi,

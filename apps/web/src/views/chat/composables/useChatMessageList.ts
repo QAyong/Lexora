@@ -1,5 +1,5 @@
 import type { MaybeRefOrGetter } from 'vue'
-import type { AiModelModality, ChatMessage, ChatUploadedAsset } from '@/apis/chat'
+import type { AiModelModality, ChatMessage, ChatSessionReference, ChatUploadedAsset } from '@/apis/chat'
 import type {
   ChatComposerAttachment,
   ChatComposerContentJSON,
@@ -54,6 +54,7 @@ export function useChatMessageList(options: UseChatMessageListOptions = {}) {
   const editingMessageId = shallowRef<string | null>(null)
   const editingContentJSON = shallowRef<ChatComposerContentJSON>(createEmptyChatComposerContentJSON())
   const editingAttachments = shallowRef<ChatComposerAttachment[]>([])
+  const editingSessionReferences = shallowRef<ChatSessionReference[]>([])
   const editingHighlightAttachmentId = shallowRef<string | null>(null)
   const editingWebSearchForRunEnabled = shallowRef(true)
   const isReadonly = computed(() => Boolean(toValue(options.isReadonly)))
@@ -109,6 +110,7 @@ export function useChatMessageList(options: UseChatMessageListOptions = {}) {
     editingMessageId.value = message.id
     editingContentJSON.value = cloneContentJSON(message.metadata.contentJSON)
     editingAttachments.value = message.metadata.attachments.map(attachment => ({ ...attachment }))
+    editingSessionReferences.value = message.metadata.sessionReferences.map(reference => ({ ...reference }))
     editingHighlightAttachmentId.value = null
     editingWebSearchForRunEnabled.value = !message.metadata.disabledSkillKeys.includes(AGENT_WEB_SEARCH_SKILL_KEY)
   }
@@ -117,6 +119,7 @@ export function useChatMessageList(options: UseChatMessageListOptions = {}) {
     editingMessageId.value = null
     editingContentJSON.value = createEmptyChatComposerContentJSON()
     editingAttachments.value = []
+    editingSessionReferences.value = []
     editingHighlightAttachmentId.value = null
     editingWebSearchForRunEnabled.value = true
   }
@@ -276,6 +279,7 @@ export function useChatMessageList(options: UseChatMessageListOptions = {}) {
     composerSelectedModelRef,
     copyMessage: messageActions.copyMessage,
     editingAttachments,
+    editingSessionReferences,
     editingContentJSON,
     editingHighlightAttachmentId,
     editingWebSearchForRunEnabled,

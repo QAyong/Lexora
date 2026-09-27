@@ -45,6 +45,7 @@ const {
   composerSelectedModelRef,
   copyMessage,
   editingAttachments,
+  editingSessionReferences,
   editingContentJSON,
   editingHighlightAttachmentId,
   editingWebSearchForRunEnabled,
@@ -274,6 +275,7 @@ function formatMessageSentAt(value: string): string {
                   v-model:web-search-for-run-enabled="editingWebSearchForRunEnabled"
                   :content-j-s-o-n="editingContentJSON"
                   :attachments="editingAttachments"
+                  :session-references="editingSessionReferences"
                   :selected-model-ref="composerSelectedModelRef"
                   :model-selection-kind="composerModelSelectionKind"
                   :upload-availability="uploadAvailability"
@@ -283,6 +285,7 @@ function formatMessageSentAt(value: string): string {
                   document-picker-teleport-to=".chat-view__picker-layer"
                   @update:content-j-s-o-n="editingContentJSON = $event"
                   @update:attachments="editingAttachments = $event"
+                  @update:session-references="editingSessionReferences = $event"
                   @send="submitEditMessage(virtual.item.message, $event)"
                   @select-model="selectComposerModel"
                   @highlight-attachment="highlightEditingAttachment"

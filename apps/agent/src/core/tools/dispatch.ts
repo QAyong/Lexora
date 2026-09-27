@@ -1,7 +1,9 @@
 import type { ChatMemoryOperationProjection } from '@haohaoxue/lexora-contracts'
 import type { ToolCall } from '@langchain/core/messages'
+import type { AgentChatApiClient } from '../../clients/chat'
 import type { AgentMemoryApiClient } from '../../clients/memory'
 import type { AgentSkillApiClient } from '../../clients/skills'
+import type { AgentChatModel } from '../../integrations/model-providers/chat-model'
 import type { WebSearchClient } from '../../integrations/web-search'
 import type { RuntimeSkillActionProvider } from '../skills/action-providers'
 import type { LoadedAgentSkill } from '../skills/activation'
@@ -12,6 +14,8 @@ import { isGraphInterrupt } from '@langchain/langgraph'
 import { createRuntimeToolRegistry } from './registry'
 
 export async function executeRuntimeToolCalls(input: {
+  chatApi?: AgentChatApiClient
+  model?: AgentChatModel
   memoryApi?: AgentMemoryApiClient
   skillApi?: AgentSkillApiClient
   webSearch?: WebSearchClient

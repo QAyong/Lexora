@@ -21,6 +21,7 @@ import {
   CHAT_MESSAGE_ATTACHMENT_PLACEMENT,
   CHAT_MESSAGE_ATTACHMENT_TYPE,
 } from '@haohaoxue/lexora-contracts/chat/constants'
+import { parseChatSessionReferenceClipboard } from '@haohaoxue/lexora-shared/chat'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { nanoid } from 'nanoid'
 import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
@@ -54,6 +55,7 @@ const props = withDefaults(defineProps<ChatComposerProps>(), {
     file: { disabled: false },
   }),
   documentAssistantEditIntent: null,
+  sessionReferences: () => [],
   documentAssistantSkillEnabled: false,
   translatorSkillEnabled: false,
   translatorTargetLanguage: null,
@@ -254,13 +256,34 @@ function handleEditorTextInput(from: number, to: number, text: string) {
 }
 
 function handleEditorPaste(event: ClipboardEvent) {
-  const files = Array.from(event.clipboardData?.files ?? [])
+  const clipboard = event.clipboardData
+  const text = clipboard?.getData('text/plain') ?? ''
+  const sessionReferences = parseChatSessionReferenceClipboard(text)
+  const files = Array.from(clipboard?.files ?? [])
+
+  if (sessionReferences) {
+    event.preventDefault()
+    const nextReferences = [...props.sessionReferences]
+    const existingIds = new Set(nextReferences.map(reference => reference.id))
+    for (const reference of sessionReferences) {
+      if (existingIds.has(reference.id)) {
+        continue
+      }
+      existingIds.add(reference.id)
+      nextReferences.push(reference)
+    }
+    emits('update:sessionReferences', nextReferences)
+    if (files.length) {
+      emitUploadFiles(files)
+    }
+    return true
+  }
+
   if (!files.length) {
     return false
   }
 
   event.preventDefault()
-  const text = event.clipboardData?.getData('text/plain') ?? ''
   if (text) {
     editor.value?.commands.insertContent(text)
   }
@@ -353,6 +376,10 @@ function removePanelAttachment(attachmentId: string) {
   emits('update:attachments', props.attachments.filter(attachment => attachment.id !== attachmentId))
 }
 
+function removeSessionReference(sessionId: string) {
+  emits('update:sessionReferences', props.sessionReferences.filter(reference => reference.id !== sessionId))
+}
+
 function emitUploadFiles(files: File[]) {
   const imageFiles = files.filter(isImageFile)
   const attachmentFiles = files.filter(file => !isImageFile(file))
@@ -377,6 +404,7 @@ function emitSend() {
       ? props.contentJSON
       : createPlainTextChatContentJSON(content),
     attachments: orderedSubmitAttachments.value,
+    sessionReferences: props.sessionReferences.map(reference => ({ ...reference })),
     skillInvocation: props.translatorTargetLanguage
       ? {
           skillKey: AGENT_TRANSLATOR_SKILL_KEY,
@@ -580,9 +608,11 @@ function isSameContent(currentEditor: Editor, contentJSON: JSONContent) {
     <div class="chat-composer__surface">
       <ChatComposerContextTags
         :attachments="props.attachments"
+        :session-references="props.sessionReferences"
         :document-selection-display-mode="documentSelectionDisplayMode"
         :highlight-attachment-id="props.highlightAttachmentId"
         @remove="removePanelAttachment"
+        @remove-session-reference="removeSessionReference"
       />
 
       <div class="chat-composer__editor">

@@ -16,6 +16,7 @@ import { currentPlatform } from '../../platform/currentPlatform'
 import { resolveWindowsPowerShell } from '../../platform/windows/powerShell'
 import { automationNotifications } from '../../shared/automation/automationApi'
 import { contextPanelRpc, contextPanelStateSchema } from '../../shared/context-panel/contextPanel'
+import { readBuddyUserMessageContent } from '../../shared/conversation/buddyUserContent'
 import { ServiceHost } from '../../shared/lifecycle/ServiceHost'
 import { ApplicationEvents as EventPublisher } from '../../shared/observability/ApplicationEvents'
 import { openExternalResultSchema } from '../../shared/runtime/credentialProtocol'
@@ -391,6 +392,14 @@ export async function startBuddyService(
       approvalService,
       attachmentService,
       changeCaptureService,
+      conversations,
+      getSessionReferences: runId => {
+        const run = runs.findById(runId)
+        const content = run?.triggeringMessageId
+          ? readBuddyUserMessageContent(conversations.findMessageById(run.triggeringMessageId)?.content)
+          : null
+        return content?.userContent.sessionReferences ?? []
+      },
       directoryGrants,
       createCapabilities: createBuddyCapabilityFactory(currentPlatform, {
         pluginAuthoring: options.rpc,

@@ -91,6 +91,7 @@ export class PiTurnExecutor implements RunExecutionBackend {
         blueprint: input.session,
         piSessionFile: run.piSessionFile,
         runId: run.id,
+        sessionReferences: input.sessionReferences,
         signal,
         thinkingLevel: input.thinkingLevel,
       }),

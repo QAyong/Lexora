@@ -11,6 +11,7 @@ import type {
 } from './turnTypes'
 import { BuddyAgentRunError } from '../../runs/runError'
 import { SkillError } from '../../skills/skillFiles'
+import { readBuddyUserMessageContent } from '../../../../shared/conversation/buddyUserContent'
 import { createBuddyInputReference } from '../context/BuddyInputReference'
 
 export type BuddyRunExecutionPlan
@@ -20,7 +21,7 @@ export type BuddyRunExecutionPlan
 export interface BuddyRunExecutionPlannerOptions {
   attachments: Pick<AttachmentService, 'resolveInputReferences'>
   commands: Pick<CommandRequestRepository, 'findByRunId'>
-  conversations: Pick<ConversationRepository, 'findById'>
+  conversations: Pick<ConversationRepository, 'findById' | 'findMessageById'>
   models: Pick<ProviderExecutionModelResolver, 'resolveAvailable'>
   runInputs: Pick<RunInputRepository, 'findByRunId'>
   runs: Pick<RunRepository, 'findById'>
@@ -106,9 +107,13 @@ export class BuddyRunExecutionPlanner {
       modelId: run.model,
       providerId: run.provider,
     })
+    const sessionReferences = run.triggeringMessageId
+      ? readBuddyUserMessageContent(this.#options.conversations.findMessageById(run.triggeringMessageId)?.content)?.userContent.sessionReferences ?? []
+      : []
     return {
       input: {
         ...common,
+        sessionReferences,
         serviceTier: input.serviceTier,
         thinkingLevel: input.reasoning ?? undefined,
         userInput: createBuddyInputReference({

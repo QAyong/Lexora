@@ -47,6 +47,7 @@ const {
   retryAssistantMessage,
   selectComposerModel,
   selectHistorySession,
+  sessionReferences,
   startNewSession,
   submitRename,
   switchToBranch,
@@ -126,6 +127,7 @@ watch(
       <ChatComposer
         ref="composer"
         v-model:attachments="attachments"
+        v-model:session-references="sessionReferences"
         v-model:document-assistant-edit-intent="documentAssistantEditIntent"
         v-model:translator-target-language="translatorTargetLanguage"
         v-model:web-search-for-run-enabled="webSearchForRunEnabled"

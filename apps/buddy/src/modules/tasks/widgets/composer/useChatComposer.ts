@@ -1,6 +1,7 @@
 import type { BuddyChatCommandName } from '@buddy-shared/conversation/buddyChatCommands'
 import type { BuddyMessageQuote } from '@buddy-shared/conversation/buddyUserContent'
 import type { BuddyComposerSource } from '@buddy-shared/conversation/composerResource'
+import type { ChatSessionReference } from '@haohaoxue/lexora-shared/chat'
 import type { JSONContent } from '@tiptap/core'
 import type { ComposerResourceCard, UseChatComposerOptions } from './typing'
 import type { ChatComposerSubmitPayload, ChatPromptContextOption } from '@/modules/prompt-input'
@@ -54,11 +55,13 @@ export function useChatComposer(options: UseChatComposerOptions) {
       return query.handleKeydown(event)
     },
     onPasteFiles: files => attachFiles(files, 'both', 'clipboard'),
+    onPasteSessionReferences: addSessionReferences,
     onSubmit: submit,
     onLocateResource: options.onLocateResource,
   })
   const resourceIds = computed(() => getChatComposerResourceIds(contentJSON.value))
   const quotes = computed(() => serializedContent.value.userContent?.quotes ?? [])
+  const sessionReferences = computed(() => serializedContent.value.userContent?.sessionReferences ?? [])
   const modelInputIssue = computed(() => resolveChatComposerModelInputIssue({
     model: options.selectedModel.value,
     modelSelection: {
@@ -206,6 +209,34 @@ export function useChatComposer(options: UseChatComposerOptions) {
     insertChatComposerResources(current, options.beginImport(files, origin), placement)
   }
 
+  function addSessionReferences(references: readonly ChatSessionReference[]) {
+    const current = editor.value
+    if (!current || !current.isEditable)
+      return
+    const existingIds = new Set<string>(current.state.doc.attrs.sessionReferences.map((reference: ChatSessionReference) => reference.id))
+    const next = [...current.state.doc.attrs.sessionReferences]
+    for (const reference of references) {
+      if (existingIds.has(reference.id))
+        continue
+      existingIds.add(reference.id)
+      next.push(reference)
+    }
+    if (next.length === current.state.doc.attrs.sessionReferences.length)
+      return
+    current.view.dispatch(current.state.tr.setDocAttribute('sessionReferences', next))
+  }
+
+  function removeSessionReference(id: string) {
+    const current = editor.value
+    if (!current)
+      return false
+    const next = current.state.doc.attrs.sessionReferences.filter((reference: ChatSessionReference) => reference.id !== id)
+    if (next.length === current.state.doc.attrs.sessionReferences.length)
+      return false
+    current.view.dispatch(current.state.tr.setDocAttribute('sessionReferences', next))
+    return true
+  }
+
   function removeResource(resourceId: string) {
     const current = editor.value
     if (!current)
@@ -302,6 +333,8 @@ export function useChatComposer(options: UseChatComposerOptions) {
     modelInputIssue,
     panelResources,
     quotes,
+    sessionReferences,
+    removeSessionReference,
     addQuote: (quote: BuddyMessageQuote) => addChatQuote(editor.value, quote),
     removeQuote: (id: string) => removeChatQuote(editor.value, id),
     removeResource,

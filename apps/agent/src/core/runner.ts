@@ -256,6 +256,7 @@ export async function executeAgentGeneration(input: {
         ...directInvocationRun?.stateContext,
         triggerUserMessageId: input.bootstrap.context.triggerUserMessageId,
         contextSnapshots,
+        sessionReferences: directInvocation ? [] : input.bootstrap.context.sessionReferences,
         inputAttachments: directInvocation ? [] : input.bootstrap.context.inputAttachments,
         onStreamPart: async (part: AgentModelStreamPart) => await emitAgentModelStreamPart(part, {
           emit: input.emit,
