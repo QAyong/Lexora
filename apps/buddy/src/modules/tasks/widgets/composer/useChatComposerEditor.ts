@@ -8,7 +8,6 @@ import { computed, shallowRef, watch } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import { createChatComposerContentFromText, findChatComposerTrigger, getChatComposerResourceIds, serializeChatComposerContent, shouldSubmitChatComposerKey } from '@/modules/prompt-input'
 import { ChatComposerDocument, ChatComposerPromptDirective, ChatComposerResourceClipboard, ChatComposerResourceReference, moveChatComposerResourceSelection } from '@/modules/prompt-input/ui'
-import { parseChatSessionReferenceClipboard } from '@haohaoxue/lexora-shared/chat'
 import { useWorkbenchAnchor } from '@/shared/ui/contributions/workbenchUiContext'
 import { resolveFileIcon } from '@/shared/ui/file-icon'
 import { getChatImageLabels } from '../../model/attachments/chatAttachmentView'
@@ -131,8 +130,7 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
         const panelChanged = panelResourceIds.length !== nextPanelResourceIds.length
           || panelResourceIds.some((id, index) => id !== nextPanelResourceIds[index])
         const quotesChanged = JSON.stringify(current.state.doc.attrs.quotes) !== JSON.stringify(document.attrs.quotes)
-        const sessionReferencesChanged = JSON.stringify(current.state.doc.attrs.sessionReferences) !== JSON.stringify(document.attrs.sessionReferences)
-        if (!bodyChanged && !panelChanged && !quotesChanged && !sessionReferencesChanged)
+        if (!bodyChanged && !panelChanged && !quotesChanged)
           return
       }
 
@@ -148,7 +146,6 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
           current.view.dispatch(transaction
             .setDocAttribute('panelResourceIds', document.attrs.panelResourceIds)
             .setDocAttribute('quotes', document.attrs.quotes)
-            .setDocAttribute('sessionReferences', document.attrs.sessionReferences)
             .setMeta('addToHistory', false))
         }
         options.onTrigger(null)
@@ -199,18 +196,7 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
   }
 
   function handleEditorPaste(event: ClipboardEvent) {
-    const text = event.clipboardData?.getData('text/plain') ?? ''
-    const sessionReferences = parseChatSessionReferenceClipboard(text)
     const files = [...(event.clipboardData?.files ?? [])]
-
-    if (sessionReferences) {
-      event.preventDefault()
-      options.onPasteSessionReferences(sessionReferences)
-      if (files.length)
-        options.onPasteFiles(files)
-      return true
-    }
-
     if (!files.length)
       return false
 

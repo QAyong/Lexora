@@ -1,9 +1,7 @@
 import type { ChatMemoryOperationProjection } from '@haohaoxue/lexora-contracts'
 import type { ToolMessage } from '@langchain/core/messages'
-import type { AgentChatApiClient } from '../../clients/chat'
 import type { AgentMemoryApiClient } from '../../clients/memory'
 import type { AgentSkillApiClient } from '../../clients/skills'
-import type { AgentChatModel } from '../../integrations/model-providers/chat-model'
 import type { AgentModelStreamPart } from '../../integrations/model-providers/stream-text'
 import type { WebSearchClient } from '../../integrations/web-search'
 import type { RuntimeSkillActionProvider } from '../skills/action-providers'
@@ -59,8 +57,6 @@ export async function emitToolProtocolUnavailableWarning(input: {
 }
 
 export async function executeRuntimeToolCallsWithEvents(input: {
-  chatApi?: AgentChatApiClient
-  model?: AgentChatModel
   memoryApi?: AgentMemoryApiClient
   skillApi?: AgentSkillApiClient
   webSearch?: WebSearchClient
@@ -75,8 +71,6 @@ export async function executeRuntimeToolCallsWithEvents(input: {
 
   try {
     const result = await executeRuntimeToolCalls({
-      chatApi: input.chatApi,
-      model: input.model,
       memoryApi: input.memoryApi,
       webSearch: input.webSearch,
       skillApi: input.skillApi,

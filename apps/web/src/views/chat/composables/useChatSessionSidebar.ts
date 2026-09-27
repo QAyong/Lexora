@@ -1,7 +1,5 @@
 import type { ChatSessionSidebarActionCommand } from '../typing'
 import type { ChatSession } from './useChatSessions'
-import { formatChatSessionReferenceClipboard } from '@haohaoxue/lexora-shared/chat'
-import { useClipboard } from '@vueuse/core'
 import { computed, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from '@/utils/element-plus'
@@ -10,7 +8,6 @@ import { useChatSessions } from './useChatSessions'
 
 export function useChatSessionSidebar() {
   const { t } = useI18n({ useScope: 'global' })
-  const { copy, isSupported } = useClipboard({ legacy: true })
   const { activeSessionId, batchDeleteSessions, deleteSession, renameSession, selectSession } = useChatSessions()
   const { navigateToNewChat, navigateToSession } = useChatRouteState()
   const isSelectionMode = shallowRef(false)
@@ -166,29 +163,10 @@ export function useChatSessionSidebar() {
     }
   }
 
-  async function copySessionReference(session: ChatSession) {
-    if (!isSupported.value) {
-      ElMessage.error(t('chat.messageList.copyUnsupported'))
-      return
-    }
-
-    try {
-      await copy(formatChatSessionReferenceClipboard({ id: session.id, title: session.title }))
-    }
-    catch {
-      ElMessage.error(t('chat.messageList.copyFailed'))
-    }
-  }
-
   function handleSessionAction(
     session: ChatSession,
     command: ChatSessionSidebarActionCommand | string | number | object,
   ) {
-    if (command === 'copy-reference') {
-      void copySessionReference(session)
-      return
-    }
-
     if (command === 'rename') {
       void promptRename(session)
       return

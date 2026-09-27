@@ -225,9 +225,6 @@ function isWeixinBotSession(session: ChatSession) {
                       <ElDropdownItem command="rename" class="chat-session-sidebar__menu-item min-h-8 px-2 text-main">
                         {{ t('chat.session.rename') }}
                       </ElDropdownItem>
-                      <ElDropdownItem command="copy-reference" class="chat-session-sidebar__menu-item min-h-8 px-2 text-main">
-                        {{ t('chat.session.copyReference') }}
-                      </ElDropdownItem>
                       <ElDropdownItem
                         command="delete"
                         divided

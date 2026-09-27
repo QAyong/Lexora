@@ -5,7 +5,6 @@ import type {
   AgentClientActionResult,
   AgentMemoryRunOptions,
   AgentProfileSnapshot,
-  AgentReferencedChatSession,
   AgentRuntimeHints,
   AgentRuntimeModelTarget,
   AgentRuntimeSkillContext,
@@ -24,7 +23,6 @@ import type {
   ChatSessionChannel,
   ChatSessionDetail,
   ChatSessionOrigin,
-  ChatSessionReference,
   ChatSessionSummary,
   ChatSkillInvocation,
   ResolvedLanguagePreference,
@@ -37,7 +35,6 @@ import {
   AgentClientActionSchema,
   AgentMemoryRunOptionsSchema,
   AgentProfileSnapshotSchema,
-  AgentReferencedChatSessionSchema,
   AgentRuntimeHintsSchema,
   AgentRuntimeModelTargetSchema,
   AgentRuntimeSkillContextSchema,
@@ -54,7 +51,6 @@ import {
   ChatGenerationModelTargetSnapshotSchema,
   ChatMutationResponseSchema,
   ChatPersistedMessageAttachmentSchema,
-  ChatSessionReferencesSchema,
   ChatSkillInvocationSchema,
   WORKSPACE_MEMBER_STATUS,
 } from '@haohaoxue/lexora-contracts'
@@ -314,7 +310,6 @@ interface CreateRunInput {
   content?: string
   contentJSON?: ChatMessageContentJSON
   attachments?: ChatMessageAttachmentInput[] | null
-  sessionReferences?: ChatSessionReference[]
   sourceMessageId?: string
   targetMessageId?: string
   generationId: string
@@ -612,7 +607,6 @@ export class ChatSessionsService {
     content: string
     contentJSON: ChatMessageContentJSON
     attachments?: ChatMessageAttachmentInput[] | null
-    sessionReferences?: ChatSessionReference[]
     skillInvocation?: ChatSkillInvocation | null
   }): Promise<ChatMutationResponse> {
     const result = await this.createRunFromUserMessage(input)
@@ -624,7 +618,6 @@ export class ChatSessionsService {
     content: string
     contentJSON: ChatMessageContentJSON
     attachments?: ChatMessageAttachmentInput[] | null
-    sessionReferences?: ChatSessionReference[]
     skillInvocation?: ChatSkillInvocation | null
   }): Promise<ChatMutationResponse> {
     const result = await this.createRunFromEditedUserMessage(input)
@@ -945,80 +938,6 @@ export class ChatSessionsService {
     }
   }
 
-  async getReferencedChatSession(input: {
-    generationId: string
-    sessionId: string
-  }): Promise<AgentReferencedChatSession> {
-    const generation = await this.prisma.chatMessageGeneration.findFirst({
-      where: {
-        generationId: input.generationId,
-        deletedAt: null,
-      },
-      select: {
-        sessionId: true,
-        triggerUserMessageId: true,
-        actorUserId: true,
-      },
-    })
-    if (!generation) {
-      throw apiNotFound(API_ERROR_CODE.CHAT_GENERATION_NOT_FOUND)
-    }
-
-    const [sourceSession, triggerMessage, targetSession] = await Promise.all([
-      this.prisma.chatSession.findFirst({
-        where: this.createAccessibleSessionWhere(generation.actorUserId, generation.sessionId),
-        select: { workspaceId: true },
-      }),
-      this.prisma.chatSessionMessage.findFirst({
-        where: {
-          id: generation.triggerUserMessageId,
-          sessionId: generation.sessionId,
-        },
-        select: { metadata: true },
-      }),
-      this.prisma.chatSession.findFirst({
-        where: this.createAccessibleSessionWhere(generation.actorUserId, input.sessionId),
-        select: { id: true, workspaceId: true, title: true },
-      }),
-    ])
-
-    const references = readChatSessionReferences(triggerMessage?.metadata)
-    const isSameWorkspace = Boolean(sourceSession && targetSession && sourceSession.workspaceId === targetSession.workspaceId)
-    const isReferenced = Boolean(targetSession && references.some(reference => reference.id === targetSession.id))
-    if (!sourceSession || !targetSession || !isSameWorkspace || !isReferenced) {
-      this.logger.warn(
-        `referenced chat session read rejected: generation=${input.generationId} session=${input.sessionId} reason=${resolveReferencedSessionRejectReason({
-          hasSourceSession: Boolean(sourceSession),
-          hasTargetSession: Boolean(targetSession),
-          isSameWorkspace,
-          isReferenced,
-        })}`,
-      )
-      throw new NotFoundException('引用会话不可用')
-    }
-
-    const session = await this.findAccessibleSessionRunDetailOrThrow(generation.actorUserId, targetSession.id)
-    const messages = resolveActivePath(session.messages, session.activeRootMessageId)
-      .filter(message => message.role === ChatSessionMessageRole.USER || message.status === ChatSessionMessageStatus.COMPLETED)
-      .map((message, index) => ({
-        index,
-        messageId: message.id,
-        role: toChatMessageRole(message.role),
-        createdAt: message.createdAt.toISOString(),
-        content: getChatMessageContentSnapshot(message),
-      }))
-
-    this.logger.log(
-      `referenced chat session read: generation=${input.generationId} session=${session.id} messages=${messages.length} messageIds=[${formatChatMessageIdLogList(messages)}]`,
-    )
-
-    return AgentReferencedChatSessionSchema.parse({
-      sessionId: session.id,
-      title: session.title,
-      messages,
-    })
-  }
-
   async getAgentGenerationBootstrap(input: {
     generationId: string
   }): Promise<ChatGenerationBootstrap> {
@@ -1154,7 +1073,6 @@ export class ChatSessionsService {
       messages: activePath
         .filter(message => message.role === ChatSessionMessageRole.USER || message.status === ChatSessionMessageStatus.COMPLETED)
         .map(message => this.toAgentContextMessage(message)),
-      sessionReferences: readChatSessionReferences(triggerMessage.metadata),
       contextSnapshots: triggerMessage.contextSnapshots.map((snapshot, order) => ({
         ...toChatMessageContextSnapshotMeta(snapshot),
         order,
@@ -1346,11 +1264,6 @@ export class ChatSessionsService {
     const session = await this.findAccessibleSessionRunDetailOrThrow(input.userId, input.sessionId, input.origin)
     this.assertChannelMutationAllowed(session, input.allowChannelMutation)
     await this.assertNoActiveRun(session.id)
-    const sessionReferences = await this.resolveAccessibleSessionReferences({
-      userId: input.userId,
-      workspaceId: session.workspaceId,
-      references: input.sessionReferences ?? [],
-    })
 
     const resolvedContext = await this.chatContextSnapshots.resolveForUserMessage({
       userId: input.userId,
@@ -1409,7 +1322,6 @@ export class ChatSessionsService {
         metadata: {
           ...resolvedContext.metadata,
           skillInvocation: input.skillInvocation ?? null,
-          sessionReferences,
           disabledSkillKeys: input.disabledSkillKeys ?? [],
         },
         contextSnapshots: resolvedContext.snapshots,
@@ -1506,11 +1418,6 @@ export class ChatSessionsService {
     if (!sourceMessage || sourceMessage.role !== ChatSessionMessageRole.USER) {
       throw new NotFoundException('可编辑的用户消息不存在')
     }
-    const sessionReferences = await this.resolveAccessibleSessionReferences({
-      userId: input.userId,
-      workspaceId: session.workspaceId,
-      references: input.sessionReferences ?? [],
-    })
 
     const resolvedContext = await this.chatContextSnapshots.resolveForUserMessage({
       userId: input.userId,
@@ -1559,7 +1466,6 @@ export class ChatSessionsService {
         metadata: {
           ...resolvedContext.metadata,
           skillInvocation: input.skillInvocation ?? null,
-          sessionReferences,
           disabledSkillKeys: input.disabledSkillKeys ?? [],
         },
         contextSnapshots: resolvedContext.snapshots,
@@ -1826,7 +1732,6 @@ export class ChatSessionsService {
       metadata: {
         contentJSON: ChatMessageContentJSON
         attachments: ChatPersistedMessageAttachment[]
-        sessionReferences?: ChatSessionReference[]
         skillInvocation?: ChatSkillInvocation | null
         disabledSkillKeys?: ChatDisabledSkillKeys
       }
@@ -2110,37 +2015,6 @@ export class ChatSessionsService {
       ...(origin ? { origin: toPrismaChatSessionOrigin(origin) } : {}),
       workspace: this.createWorkspaceAccessWhere(userId),
     }
-  }
-
-  private async resolveAccessibleSessionReferences(input: {
-    userId: string
-    workspaceId: string
-    references: ChatSessionReference[]
-  }): Promise<ChatSessionReference[]> {
-    const references = ChatSessionReferencesSchema.parse(input.references)
-    const seen = new Set<string>()
-    const accessibleReferences: ChatSessionReference[] = []
-
-    for (const reference of references) {
-      if (seen.has(reference.id)) {
-        continue
-      }
-      seen.add(reference.id)
-
-      const session = await this.prisma.chatSession.findFirst({
-        where: this.createAccessibleSessionWhere(input.userId, reference.id),
-        select: { id: true, workspaceId: true, title: true },
-      })
-      if (!session || session.workspaceId !== input.workspaceId) {
-        this.logger.warn(
-          `referenced chat session rejected on submit: session=${reference.id} reason=${session ? 'workspace-mismatch' : 'unavailable'}`,
-        )
-        throw new NotFoundException('引用会话不可用')
-      }
-      accessibleReferences.push({ id: session.id, title: session.title })
-    }
-
-    return accessibleReferences
   }
 
   private async findAccessibleSessionDetailOrThrow(
@@ -2646,55 +2520,6 @@ function toChatRunSummary(run: {
 
 function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
-}
-
-const REFERENCED_SESSION_LOG_MESSAGE_LIMIT = 200
-
-function resolveReferencedSessionRejectReason(input: {
-  hasSourceSession: boolean
-  hasTargetSession: boolean
-  isSameWorkspace: boolean
-  isReferenced: boolean
-}): string {
-  if (!input.hasSourceSession) {
-    return 'source-session-unavailable'
-  }
-  if (!input.hasTargetSession) {
-    return 'target-session-unavailable'
-  }
-  if (!input.isSameWorkspace) {
-    return 'workspace-mismatch'
-  }
-  if (!input.isReferenced) {
-    return 'not-referenced'
-  }
-  return 'unknown'
-}
-
-function formatChatMessageIdLogList(messages: { messageId: string }[]): string {
-  const ids = messages.slice(0, REFERENCED_SESSION_LOG_MESSAGE_LIMIT).map(message => message.messageId)
-  const omitted = messages.length - ids.length
-  return omitted > 0 ? `${ids.join(',')},+${omitted} more` : ids.join(',')
-}
-
-function readChatSessionReferences(metadata: unknown): ChatSessionReference[] {
-  if (!isRecord(metadata)) {
-    return []
-  }
-
-  const result = ChatSessionReferencesSchema.safeParse(metadata.sessionReferences)
-  if (!result.success) {
-    return []
-  }
-
-  const seen = new Set<string>()
-  return result.data.filter((reference) => {
-    if (seen.has(reference.id)) {
-      return false
-    }
-    seen.add(reference.id)
-    return true
-  })
 }
 
 function readChatSkillInvocation(metadata: unknown): ChatSkillInvocation | null {

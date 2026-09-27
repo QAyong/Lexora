@@ -2,10 +2,8 @@ import type { ChatMemoryOperationProjection } from '@haohaoxue/lexora-contracts'
 import type { AgentSkillConnectorType } from '@haohaoxue/lexora-contracts/agent'
 import type { ToolCall, ToolMessage } from '@langchain/core/messages'
 import type { StructuredToolInterface } from '@langchain/core/tools'
-import type { AgentChatApiClient } from '../../clients/chat'
 import type { AgentMemoryApiClient } from '../../clients/memory'
 import type { AgentSkillApiClient } from '../../clients/skills'
-import type { AgentChatModel } from '../../integrations/model-providers/chat-model'
 import type { WebSearchClient } from '../../integrations/web-search'
 import type { RuntimeSkillActionProvider, RuntimeSkillActionProviderServices } from '../skills/action-providers'
 import type { LoadedAgentSkill } from '../skills/activation'
@@ -17,7 +15,6 @@ import {
   executeAgentSkillToolCalls,
   isSkillLoaded,
 } from '../skills/activation'
-import { createSessionAskToolDescriptor } from './sessionAsk'
 
 export interface RuntimeToolDescriptorExecutionInput {
   context: AgentGraphContext
@@ -56,8 +53,6 @@ export interface RuntimeToolRegistry {
 
 export function createRuntimeToolRegistry(input: {
   context: AgentGraphContext | undefined
-  chatApi?: AgentChatApiClient
-  model?: AgentChatModel
   memoryApi?: AgentMemoryApiClient
   skillApi?: AgentSkillApiClient
   webSearch?: WebSearchClient
@@ -68,13 +63,6 @@ export function createRuntimeToolRegistry(input: {
   const providerServices = createRuntimeSkillActionProviderServices(input)
   const skillActionProviders = input.skillActionProviders ?? DEFAULT_RUNTIME_SKILL_ACTION_PROVIDERS
   const hasSkillRuntime = Boolean(input.skillApi)
-
-  if (input.chatApi && input.model && input.context?.generationId && input.context.sessionReferences?.length) {
-    descriptors.push(createSessionAskToolDescriptor({
-      chatApi: input.chatApi,
-      model: input.model,
-    }))
-  }
 
   if (hasRuntimeSkillCatalog(input) && input.skillApi) {
     descriptors.push(...createAgentSkillTools().map(tool => ({

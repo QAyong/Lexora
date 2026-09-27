@@ -19,7 +19,6 @@ export type {
   ChatSessionDetail,
   ChatSessionEvent,
   ChatSessionOrigin,
-  ChatSessionReference,
   ChatSessionSummary,
   ChatSessionUsageSummary,
   ChatSkillInvocation,

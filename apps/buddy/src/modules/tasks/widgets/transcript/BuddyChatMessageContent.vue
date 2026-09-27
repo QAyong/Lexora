@@ -17,7 +17,6 @@ import { resolveBuddyAttachmentPreviewUrl } from '../../model/attachments/chatAt
 import { getChatMessageDisplayText, getChatMessageImageLabels, getChatMessageUserContent } from '../../model/transcript/chatMessageContent'
 import { useResourceHighlight } from '../attachments/useResourceHighlight'
 import ChatQuoteStrip from '../quotes/ChatQuoteStrip.vue'
-import ChatSessionReferenceStrip from '../composer/ChatSessionReferenceStrip.vue'
 import BuddyChatResourceReference from './BuddyChatResourceReference.vue'
 import { tryUseChatContent } from './chatContentContext'
 
@@ -141,7 +140,6 @@ function handleMarkdownLink(href: string) {
       @update:show="updatePreviewOpen"
     />
     <ChatQuoteStrip :quotes="structuredUserContent?.userContent.quotes ?? []" :language="language" />
-    <ChatSessionReferenceStrip :references="structuredUserContent?.userContent.sessionReferences ?? []" :language="language" />
     <NScrollbar
       v-if="attachmentViews.length"
       class="buddy-chat-message-content__attachment-scrollbar"

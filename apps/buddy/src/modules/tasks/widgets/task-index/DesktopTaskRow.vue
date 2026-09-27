@@ -5,10 +5,8 @@ import type { DropdownOption } from 'naive-ui'
 
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import type { DesktopTaskPinnedDropPosition } from '@/modules/tasks/widgets/task-index/taskPinnedItems'
-import { formatChatSessionReferenceClipboard } from '@haohaoxue/lexora-shared/chat'
 import {
   ApprovalsApp20Regular,
-  Copy20Regular,
   Edit20Regular,
   MoreHorizontal20Regular,
   Settings20Regular,
@@ -16,10 +14,9 @@ import {
   Tag20Regular,
   TagDismiss20Regular,
 } from '@vicons/fluent'
-import { NDropdown, NTooltip, useMessage } from 'naive-ui'
+import { NDropdown, NTooltip } from 'naive-ui'
 import { computed, h, shallowRef, useId, useTemplateRef, watch } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
-import { requireDesktopApi } from '@/platform/desktop/desktopApi'
 import DesktopOverflowingLabel from '@/modules/tasks/widgets/task-index/DesktopOverflowingLabel.vue'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 import DesktopTaskMarkOption from './DesktopTaskMarkOption.vue'
@@ -63,7 +60,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useBuddyI18n(() => props.language)
-const notification = useMessage()
 const opening = shallowRef(false)
 watch(() => props.loading, (loading, _, cleanup) => {
   opening.value = false
@@ -110,7 +106,6 @@ const actions = computed<DropdownOption[]>(() => [
     ],
   },
   { type: 'divider', key: 'task-actions-divider' },
-  { icon: () => hIcon(Copy20Regular), key: 'copy-reference', label: t('desktop.tasks.copyReference') },
   { icon: () => hIcon(Edit20Regular), key: 'rename', label: t('desktop.tasks.renameTask') },
   { icon: () => h(DesktopIcon, { name: 'delete' }), key: 'delete', label: t('desktop.tasks.deleteTask') },
 ])
@@ -120,9 +115,6 @@ function hIcon(component: typeof Edit20Regular) {
 }
 
 function handleAction(action: string | number) {
-  if (action === 'copy-reference') {
-    void copyReference()
-  }
   if (action === 'read')
     emit('setRead', props.markState?.unread === true)
   if (action === 'manage-marks')
@@ -135,18 +127,6 @@ function handleAction(action: string | number) {
     emit('rename')
   if (action === 'delete')
     emit('delete')
-}
-
-async function copyReference() {
-  try {
-    await requireDesktopApi().clipboard.writeText(formatChatSessionReferenceClipboard({
-      id: props.taskId,
-      title: props.title,
-    }))
-  }
-  catch {
-    notification.error(t('desktop.chat.copyFailed'))
-  }
 }
 
 const dragId = useId()

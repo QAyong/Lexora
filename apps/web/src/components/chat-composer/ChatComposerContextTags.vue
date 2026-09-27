@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { DocumentSelectionDisplayMode } from './attachmentOrdering'
 import type { ChatComposerAttachment } from './typing'
-import type { ChatSessionReference } from '@/apis/chat'
 import { Close } from '@element-plus/icons-vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -12,14 +11,12 @@ import {
 
 const props = defineProps<{
   attachments: ChatComposerAttachment[]
-  sessionReferences?: ChatSessionReference[]
   documentSelectionDisplayMode?: DocumentSelectionDisplayMode | null
   highlightAttachmentId?: string | null
 }>()
 
 const emits = defineEmits<{
   remove: [attachmentId: string]
-  removeSessionReference: [sessionId: string]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -33,7 +30,7 @@ function getDisplayLabel(attachment: ChatComposerAttachment) {
 </script>
 
 <template>
-  <div v-if="panelAttachments.length || props.sessionReferences?.length" class="chat-composer-context-tags">
+  <div v-if="panelAttachments.length" class="chat-composer-context-tags">
     <div
       v-for="attachment in panelAttachments"
       :key="attachment.id"
@@ -49,23 +46,6 @@ function getDisplayLabel(attachment: ChatComposerAttachment) {
         type="button"
         :aria-label="t('chat.composer.removeContext')"
         @click.stop="emits('remove', attachment.id)"
-      >
-        <ElIcon><Close /></ElIcon>
-      </button>
-    </div>
-    <div
-      v-for="reference in props.sessionReferences ?? []"
-      :key="reference.id"
-      class="chat-composer-context-tags__tag chat-composer-context-tags__session-tag"
-      :title="reference.title"
-    >
-      <SvgIcon category="ui" icon="chat" size="0.75rem" class="shrink-0 text-secondary" />
-      <span class="chat-composer-context-tags__label">{{ reference.title }}</span>
-      <button
-        class="chat-composer-context-tags__remove"
-        type="button"
-        :aria-label="t('chat.session.removeReference', { title: reference.title })"
-        @click.stop="emits('removeSessionReference', reference.id)"
       >
         <ElIcon><Close /></ElIcon>
       </button>
@@ -94,10 +74,6 @@ function getDisplayLabel(attachment: ChatComposerAttachment) {
     font-size: 0.75rem;
     line-height: 1;
     cursor: default;
-  }
-
-  .chat-composer-context-tags__session-tag {
-    border-color: color-mix(in srgb, var(--brand-border-base) 78%, var(--brand-primary));
   }
 
   .chat-composer-context-tags__tag.is-highlighted {

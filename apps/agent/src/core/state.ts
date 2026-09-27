@@ -11,7 +11,6 @@ import type {
   AgentRuntimeSkillCredentials,
   ChatGenerationUsageSnapshot,
   ChatMemoryOperationProjection,
-  ChatSessionReference,
   ResolvedLanguagePreference,
 } from '@haohaoxue/lexora-contracts'
 import type { AgentChatModelOptions } from '../integrations/model-providers/chat-model'
@@ -63,7 +62,6 @@ export interface AgentGraphContext {
   directTranslatorInvocation?: DirectTranslatorInvocation | null
   triggerUserMessageId?: string | null
   contextSnapshots?: AgentChatContextSnapshot[] | null
-  sessionReferences?: ChatSessionReference[] | null
   inputAttachments?: AgentChatInputAttachment[] | null
   onStreamPart?: (part: AgentModelStreamPart) => Promise<void> | void
   onRuntimeWarning?: (warning: AgentRuntimeWarning) => Promise<void> | void

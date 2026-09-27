@@ -141,7 +141,6 @@ export function createChatStreamController(
         content,
         contentJSON: input.contentJSON,
         attachments: input.attachments ?? [],
-        sessionReferences: input.sessionReferences ?? [],
         memory: input.memory ?? { ignoredForRun: false },
         skillInvocation: input.skillInvocation ?? null,
         disabledSkillKeys: input.disabledSkillKeys ?? [],
@@ -175,7 +174,6 @@ export function createChatStreamController(
         content,
         contentJSON: payload.contentJSON,
         attachments: payload.attachments ?? [],
-        sessionReferences: payload.sessionReferences ?? [],
         memory: payload.memory ?? { ignoredForRun: false },
         skillInvocation: payload.skillInvocation ?? null,
         disabledSkillKeys: payload.disabledSkillKeys ?? [],
@@ -458,7 +456,6 @@ function createPendingUserMessage(input: {
     metadata: {
       contentJSON: cloneContentJSON(input.input.contentJSON),
       attachments: toPendingMessageAttachments(input.input.attachments ?? []),
-      sessionReferences: input.input.sessionReferences ?? [],
       contextSnapshotMetas: [],
       memoryOperations: [],
       skillInvocation: input.input.skillInvocation ?? null,

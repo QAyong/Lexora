@@ -71,7 +71,6 @@ export default {
   'desktop.tasks.spaceActiveRunUpdateWarning': '当前空间有正在运行的任务。名称与记忆更新仅用于后续运行。',
   'desktop.tasks.editSpaceTitle': '编辑空间',
   'desktop.tasks.moreActions': '更多操作',
-  'desktop.tasks.copyReference': '复制会话引用',
   'desktop.tasks.renameTask': '重命名',
   'desktop.tasks.untitled': '未命名任务',
   'desktop.tasks.tasksSection': '任务',

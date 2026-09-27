@@ -416,9 +416,6 @@ importers:
       '@earendil-works/pi-coding-agent':
         specifier: ^0.87.1
         version: 0.87.1(patch_hash=aeb1d0976c9bee06023ddc36c53f8c95e67bb7572f94c11d1e37ab24e015b653)(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(supports-color@8.1.1)(zod@4.4.3))(supports-color@8.1.1)(ws@8.21.0)(zod@4.4.3)
-      '@haohaoxue/lexora-shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@js-temporal/polyfill':
         specifier: ^0.5.1
         version: 0.5.1

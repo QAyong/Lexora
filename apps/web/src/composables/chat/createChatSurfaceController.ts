@@ -114,7 +114,6 @@ export function createChatSurfaceController(options: CreateChatSurfaceController
       registerSubmitStartHandler: composerHost.registerSubmitStartHandler,
       resetComposer: composerHost.resetComposer,
       resetNewSessionComposerState,
-      sessionReferences: composerHost.sessionReferences,
       selectComposerModel: options.model.selectComposerModel,
       translatorSkillEnabled: skillControls.translatorSkillEnabled,
       translatorTargetLanguage: skillControls.translatorTargetLanguage,

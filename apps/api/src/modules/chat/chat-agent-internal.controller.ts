@@ -1,7 +1,5 @@
-import type { AgentChatAttachmentContent, AgentGetReferencedChatSession, AgentReferencedChatSession, ChatGenerationBootstrap } from '@haohaoxue/lexora-contracts'
-import { AgentGetReferencedChatSessionSchema } from '@haohaoxue/lexora-contracts'
+import type { AgentChatAttachmentContent, ChatGenerationBootstrap } from '@haohaoxue/lexora-contracts'
 import {
-  Body,
   Controller,
   HttpCode,
   HttpStatus,
@@ -9,7 +7,6 @@ import {
   Post,
 } from '@nestjs/common'
 import { Public } from '../../decorators/public.decorator'
-import { ZodValidationPipe } from '../../pipes/zod-validation.pipe'
 import { ChatAssetsService } from './chat-assets.service'
 import { ChatSessionsService } from './chat-sessions.service'
 
@@ -28,19 +25,6 @@ export class ChatAgentInternalController {
   ): Promise<ChatGenerationBootstrap> {
     return this.chatSessionsService.getAgentGenerationBootstrap({
       generationId,
-    })
-  }
-
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @Post('generations/:generationId/referenced-session')
-  async getReferencedChatSession(
-    @Param('generationId') generationId: string,
-    @Body(new ZodValidationPipe(AgentGetReferencedChatSessionSchema)) payload: AgentGetReferencedChatSession,
-  ): Promise<AgentReferencedChatSession> {
-    return this.chatSessionsService.getReferencedChatSession({
-      generationId,
-      sessionId: payload.sessionId,
     })
   }
 

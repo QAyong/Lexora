@@ -24,7 +24,6 @@ const {
   isSubmitting,
   isStreaming,
   selectComposerModel,
-  sessionReferences,
   translatorSkillEnabled,
   translatorTargetLanguage,
   uploadAvailability,
@@ -41,7 +40,6 @@ const {
       <ChatComposer
         v-if="!props.isReadonly"
         v-model:attachments="attachments"
-        v-model:session-references="sessionReferences"
         v-model:translator-target-language="translatorTargetLanguage"
         v-model:web-search-for-run-enabled="webSearchForRunEnabled"
         :content-j-s-o-n="contentJSON"

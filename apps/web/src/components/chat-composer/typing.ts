@@ -8,7 +8,6 @@ import type {
   ChatDocumentScope,
   ChatMessageAttachmentInput,
   ChatMessageContentJSON,
-  ChatSessionReference,
   ChatSkillInvocation,
 } from '@/apis/chat'
 
@@ -31,7 +30,6 @@ export interface ChatComposerSubmitPayload {
   content: string
   contentJSON: ChatComposerContentJSON
   attachments: ChatComposerAttachment[]
-  sessionReferences: ChatSessionReference[]
   skillInvocation?: ChatSkillInvocation | null
   disabledSkillKeys?: ChatDisabledSkillKeys
 }
@@ -39,7 +37,6 @@ export interface ChatComposerSubmitPayload {
 export interface ChatComposerProps {
   contentJSON: ChatComposerContentJSON
   attachments: ChatComposerAttachment[]
-  sessionReferences?: ChatSessionReference[]
   selectedModelRef?: ChatComposerModelRef | null
   modelSelectionKind?: ChatComposerModelSelectionKind
   isSubmitting?: boolean
@@ -59,7 +56,6 @@ export interface ChatComposerProps {
 export interface ChatComposerEmits {
   'update:contentJSON': [contentJSON: ChatComposerContentJSON]
   'update:attachments': [attachments: ChatComposerAttachment[]]
-  'update:sessionReferences': [sessionReferences: ChatSessionReference[]]
   'update:documentAssistantEditIntent': [intent: AgentDocumentAssistantEditIntent | null]
   'update:translatorTargetLanguage': [targetLanguage: AgentTranslatorTargetLanguage | null]
   'update:webSearchForRunEnabled': [enabled: boolean]

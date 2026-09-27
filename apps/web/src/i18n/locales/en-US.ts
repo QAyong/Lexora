@@ -1422,8 +1422,6 @@ export const enUS = {
       directTitle: 'In-app conversations',
       empty: 'No conversations',
       more: 'More actions',
-      copyReference: 'Copy conversation reference',
-      removeReference: 'Remove conversation reference "{title}"',
       multiSelect: 'Select multiple',
       rename: 'Rename',
       renamePlaceholder: 'Conversation name',

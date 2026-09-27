@@ -5,7 +5,6 @@ import {
   ChatImageMessageAttachmentSchema,
   ChatMessageContextSnapshotMetaSchema,
   ChatMessageRoleSchema,
-  ChatSessionReferenceSchema,
   ChatSkillInvocationSchema,
 } from '../chat'
 import { ResolvedLanguagePreferenceSchema } from '../user'
@@ -21,24 +20,6 @@ export const AgentChatContextMessageSchema = z.object({
   role: ChatMessageRoleSchema,
   content: z.string(),
   skillInvocation: ChatSkillInvocationSchema.nullable().optional(),
-}).strict()
-
-export const AgentGetReferencedChatSessionSchema = z.object({
-  sessionId: NonEmptyStringSchema,
-}).strict()
-
-export const AgentReferencedChatSessionMessageSchema = z.object({
-  index: z.number().int().nonnegative(),
-  messageId: NonEmptyStringSchema,
-  role: ChatMessageRoleSchema,
-  createdAt: z.string().datetime(),
-  content: z.string(),
-}).strict()
-
-export const AgentReferencedChatSessionSchema = z.object({
-  sessionId: NonEmptyStringSchema,
-  title: NonEmptyStringSchema,
-  messages: z.array(AgentReferencedChatSessionMessageSchema),
 }).strict()
 
 export const AgentChatContextSnapshotSchema = ChatMessageContextSnapshotMetaSchema.extend({
@@ -70,7 +51,6 @@ export const AgentChatRuntimeContextSchema = z.object({
   assistantMessageId: NonEmptyStringSchema,
   defaultResponseLanguage: ResolvedLanguagePreferenceSchema,
   messages: z.array(AgentChatContextMessageSchema),
-  sessionReferences: z.array(ChatSessionReferenceSchema).default([]),
   contextSnapshots: z.array(AgentChatContextSnapshotSchema),
   inputAttachments: z.array(AgentChatInputAttachmentSchema).default([]),
   memory: AgentMemoryRunOptionsSchema,
@@ -79,9 +59,6 @@ export const AgentChatRuntimeContextSchema = z.object({
 }).strict()
 
 export type AgentChatContextMessage = z.infer<typeof AgentChatContextMessageSchema>
-export type AgentGetReferencedChatSession = z.infer<typeof AgentGetReferencedChatSessionSchema>
-export type AgentReferencedChatSessionMessage = z.infer<typeof AgentReferencedChatSessionMessageSchema>
-export type AgentReferencedChatSession = z.infer<typeof AgentReferencedChatSessionSchema>
 export type AgentChatContextSnapshot = z.infer<typeof AgentChatContextSnapshotSchema>
 export type AgentChatInputAttachment = z.infer<typeof AgentChatInputAttachmentSchema>
 export type AgentChatAttachmentContent = z.infer<typeof AgentChatAttachmentContentSchema>

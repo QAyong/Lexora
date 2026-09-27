@@ -27,7 +27,6 @@ import {
   ChatDisabledSkillKeysSchema,
   ChatGenerationUsageSnapshotSchema,
   ChatMemoryOperationProjectionSchema,
-  ChatSessionReferencesSchema,
   ChatSkillInvocationSchema,
 } from '@haohaoxue/lexora-contracts'
 import {
@@ -315,7 +314,6 @@ export function toChatUserMessageMetadata(message: ChatSessionMessageRecord): Ch
     ? metadata.attachments as ChatPersistedMessageAttachment[]
     : []
   const skillInvocationResult = ChatSkillInvocationSchema.safeParse(metadata.skillInvocation)
-  const sessionReferencesResult = ChatSessionReferencesSchema.safeParse(metadata.sessionReferences)
   const memoryOperations = Array.isArray(metadata.memoryOperations)
     ? metadata.memoryOperations.map(operation => ChatMemoryOperationProjectionSchema.safeParse(operation))
         .filter(result => result.success)
@@ -326,7 +324,6 @@ export function toChatUserMessageMetadata(message: ChatSessionMessageRecord): Ch
     contentJSON,
     attachments,
     contextSnapshotMetas: message.contextSnapshots.map(toChatMessageContextSnapshotMeta),
-    sessionReferences: sessionReferencesResult.success ? sessionReferencesResult.data : [],
     memoryOperations,
     skillInvocation: skillInvocationResult.success ? skillInvocationResult.data : null,
     disabledSkillKeys: ChatDisabledSkillKeysSchema.parse(metadata.disabledSkillKeys),

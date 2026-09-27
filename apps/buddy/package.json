@@ -51,7 +51,6 @@
     "@anthropic-ai/sandbox-runtime": "0.0.77",
     "@earendil-works/pi-ai": "^0.87.1",
     "@earendil-works/pi-coding-agent": "^0.87.1",
-    "@haohaoxue/lexora-shared": "workspace:*",
     "@js-temporal/polyfill": "^0.5.1",
     "@modelcontextprotocol/client": "2.0.0",
     "@mozilla/readability": "^0.6.0",

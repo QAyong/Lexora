@@ -1,1 +1,1 @@
-export type ChatSessionSidebarActionCommand = 'rename' | 'delete' | 'copy-reference'
+export type ChatSessionSidebarActionCommand = 'rename' | 'delete'

@@ -14,7 +14,6 @@ import type { WebSearchClient } from '../../integrations/web-search'
 import type { RuntimeSkillActionProvider } from '../skills/action-providers'
 import type { AgentGraphContext, AgentGraphState } from '../state'
 import { SystemMessage } from '@langchain/core/messages'
-import { applyAgentSessionReferencesToMessages } from '../context/session-references'
 import { applyAgentContextSnapshotsToMessages } from '../context/snapshots'
 import { toLangChainChatMessages } from '../messages/langchain'
 import { createAgentSystemPrompt } from '../prompts/system'
@@ -52,16 +51,6 @@ export function createCallModelNode(options: CreateCallModelNodeOptions): GraphN
       ? options.chatModelFactory.createChatModel(modelTarget, modelOptions)
       : options.chatModelFactory.createChatModel(modelTarget)
     const directInvocationRuntime = resolveDirectInvocationRuntime(config.context)
-    const messagesWithContext = applyAgentSessionReferencesToMessages(
-      applyAgentContextSnapshotsToMessages(state.messages, {
-        triggerUserMessageId: config.context?.triggerUserMessageId,
-        contextSnapshots: config.context?.contextSnapshots,
-      }),
-      {
-        triggerUserMessageId: config.context?.triggerUserMessageId,
-        sessionReferences: directInvocationRuntime ? [] : config.context?.sessionReferences,
-      },
-    )
     const langChainMessages = directInvocationRuntime
       ? createDirectInvocationMessages({
           messages: state.messages,
@@ -70,7 +59,10 @@ export function createCallModelNode(options: CreateCallModelNodeOptions): GraphN
           contextSnapshots: config.context?.contextSnapshots,
         })
       : await toLangChainMessages(
-          messagesWithContext,
+          applyAgentContextSnapshotsToMessages(state.messages, {
+            triggerUserMessageId: config.context?.triggerUserMessageId,
+            contextSnapshots: config.context?.contextSnapshots,
+          }),
           state.olderMessagesExcerpt,
           state.historyDigest?.summary ?? null,
           config.context?.agentProfileConfig,
@@ -89,7 +81,6 @@ export function createCallModelNode(options: CreateCallModelNodeOptions): GraphN
 
     const streamResult = await callModelWithRuntimeTools({
       model,
-      chatApi: options.chatApi,
       messages: langChainMessages,
       sessionId: state.sessionId,
       context: config.context,

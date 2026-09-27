@@ -68,11 +68,6 @@ export const ChatMessageRoleSchema = z.enum(['user', 'assistant'])
 const IsoDateTimeStringSchema = z.string().datetime()
 const NonEmptyStringSchema = z.string().trim().min(1)
 const ChatSessionTitleSchema = z.string().trim().min(1).max(CHAT_SESSION_TITLE_MAX_LENGTH)
-export const ChatSessionReferenceSchema = z.object({
-  id: NonEmptyStringSchema,
-  title: ChatSessionTitleSchema,
-}).strict()
-export const ChatSessionReferencesSchema = z.array(ChatSessionReferenceSchema)
 export const CHAT_CONTEXT_SNAPSHOT_MAX_CONTENT_LENGTH = 200_000
 const ChatSessionSummaryBaseSchema = z.object({
   id: NonEmptyStringSchema,
@@ -273,7 +268,6 @@ export const ChatMessageMetadataSchema = ChatAssistantMessageMetadataSchema
 export const ChatUserMessageMetadataSchema = z.object({
   contentJSON: ChatMessageContentJSONSchema,
   attachments: z.array(ChatPersistedMessageAttachmentSchema).max(CHAT_MESSAGE_ATTACHMENT_MAX_COUNT),
-  sessionReferences: ChatSessionReferencesSchema.default([]),
   contextSnapshotMetas: z.array(ChatMessageContextSnapshotMetaSchema).max(CHAT_MESSAGE_ATTACHMENT_MAX_COUNT),
   memoryOperations: z.array(ChatMemoryOperationProjectionSchema).default([]),
   skillInvocation: ChatSkillInvocationSchema.nullable().optional(),
@@ -402,7 +396,6 @@ const ChatSessionMessageRequestBaseSchema = z.object({
   content: z.string().trim().min(1).max(CHAT_MESSAGE_CONTENT_MAX_LENGTH),
   contentJSON: ChatMessageContentJSONSchema,
   attachments: z.array(ChatMessageAttachmentInputSchema).max(CHAT_MESSAGE_ATTACHMENT_MAX_COUNT).optional().nullable(),
-  sessionReferences: ChatSessionReferencesSchema.optional(),
   memory: AgentMemoryRunOptionsSchema.optional(),
   skillInvocation: ChatSkillInvocationSchema.optional().nullable(),
   disabledSkillKeys: ChatDisabledSkillKeysSchema,
@@ -762,8 +755,6 @@ export type ChatRunStatus = z.infer<typeof ChatRunStatusSchema>
 export type ChatSessionEventType = z.infer<typeof ChatSessionEventTypeSchema>
 export type ChatSessionChannel = z.infer<typeof ChatSessionChannelSchema>
 export type ChatSessionOrigin = z.infer<typeof ChatSessionOriginSchema>
-export type ChatSessionReference = z.infer<typeof ChatSessionReferenceSchema>
-export type ChatSessionReferences = z.infer<typeof ChatSessionReferencesSchema>
 export type ChatMessageAttachmentType = z.infer<typeof ChatMessageAttachmentTypeSchema>
 export type ChatMessageAttachmentPlacement = z.infer<typeof ChatMessageAttachmentPlacementSchema>
 export type ChatTranslatorSkillInvocation = z.infer<typeof ChatTranslatorSkillInvocationSchema>
