@@ -3,6 +3,8 @@ import type zhCN from '../zh-CN/tasks'
 export default {
   'desktop.chat.panelOpened': 'Resource panel opened',
   'desktop.chat.panelClosed': 'Resource panel closed',
+  'desktop.chat.collapse': 'Collapse chat',
+  'desktop.chat.open': 'Expand chat',
   'desktop.chat.panelActorSystem': 'System',
   'desktop.chat.panelActorUser': 'You',
   'desktop.context.controlFailed': 'Could not control the resource panel. Try again.',
@@ -147,6 +149,7 @@ export default {
   'desktop.context.directory': 'Folder',
   'desktop.context.noCapturedChanges': 'No captured file changes to show',
   'desktop.context.open': 'Expand resource panel',
+  'desktop.context.swapPosition': 'Swap chat and resource panel positions',
   'desktop.context.openBrowser': 'Open browser',
   'desktop.context.preview': 'Preview',
   'desktop.context.source': 'Source',

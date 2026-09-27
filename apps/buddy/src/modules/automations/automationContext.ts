@@ -8,7 +8,7 @@ import { createInjectionState } from '@vueuse/core'
 export interface AutomationContext {
   automations: AutomationCapability
   openTask: (conversationId: string) => Promise<void>
-  onTaskDeleted: (conversationId: string) => void
+  onTaskDeleted: (conversationId: string) => void | Promise<void>
   beforeTaskDelete: (conversationId: string) => Promise<boolean>
   providerSettings: Pick<ModelProvidersStore, 'models' | 'providers'>
   ready: Promise<void>

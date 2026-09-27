@@ -162,6 +162,7 @@ export interface LexoraConfig {
     chat: DesktopChatPreferences
     contextPanelMode: DesktopContextPanelMode
     contextPanelGlobal: boolean
+    minimizeToTrayOnClose: boolean
     keybindings: Record<string, string>
     taskSidebarPinnedItems: DesktopTaskPinnedItem[]
     taskSidebar: DesktopTaskSidebarPreferences

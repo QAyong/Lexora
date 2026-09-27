@@ -9,6 +9,7 @@ import type { ChatReadingPositions } from '@/modules/tasks/ui'
 import type { DropPosition, ResourceRef, SplitDirection, WorkbenchView } from '@/workbench/common/workbench'
 import type { ViewCloseDecision } from '@/workbench/services/WorkbenchController'
 import { buddyUserContentToText, getBuddyUserContentResourceIds, hasBuddyUserContent } from '@buddy-shared/conversation/buddyUserContent'
+import { parseLocalChatPublicError } from '@buddy-shared/runtime/localChatError'
 import { isSkillAvailable } from '@buddy-shared/skills/skillApi'
 import { NButton, useDialog } from 'naive-ui'
 import { h, onScopeDispose, shallowReactive, shallowRef } from 'vue'
@@ -279,6 +280,27 @@ export function useDesktopWorkbench(options: { api: LexoraDesktopApi, stores: De
     const ids = new Set(tabIds)
     return Object.values(controller.layout.views).filter(view => ids.has(view.id) || (typeof view.state.contextTabId === 'string' && ids.has(view.state.contextTabId))).map(view => view.id)
   }
+
+  async function discardUnavailableTaskViews(): Promise<void> {
+    const taskIds = new Set(Object.values(controller.layout.views)
+      .filter(view => view.resource.scheme === 'task')
+      .map(view => view.resource.id))
+    const unavailable: string[] = []
+    for (const id of taskIds) {
+      try {
+        const conversation = await api.localChat.conversations.get(id)
+        if (!conversation || conversation.deletedAt)
+          unavailable.push(id)
+      }
+      catch (error) {
+        if (error instanceof Error && parseLocalChatPublicError(error.message)?.code === 'VALIDATION_FAILED')
+          unavailable.push(id)
+      }
+    }
+    for (const id of unavailable)
+      await discardTask(id)
+  }
+
   async function closeContextFiles(tabId: string) {
     return controller.closeMany(contextViews([tabId]))
   }
@@ -368,10 +390,11 @@ export function useDesktopWorkbench(options: { api: LexoraDesktopApi, stores: De
     if (Array.isArray(legacy))
       legacy.forEach(resources.restoreTab)
     delete controller.layout.auxiliary.legacyResources
-    if (!restored && !panes(controller.layout.root).some(pane => pane.view)) {
+    await discardUnavailableTaskViews()
+    if (!panes(controller.layout.root).some(pane => pane.view)) {
       const previous = await api.localChat.workspaceState.read()
       const id = previous?.value.activeConversationId
-      if (id)
+      if (!restored && id)
         await openTask(id)
       else
         await newTask(previous?.value.spaceId)
@@ -385,13 +408,15 @@ export function useDesktopWorkbench(options: { api: LexoraDesktopApi, stores: De
     return controller.closeMany(contextViews(options.resources().allTabs.value.filter(tab => tab.scope === `task:${id}`).map(tab => tab.id)))
   }
 
-  function discardTask(id: string) {
+  async function discardTask(id: string): Promise<void> {
     deletedTasks.add(id)
     options.resources().discardConversation(id)
-    for (const view of Object.values(controller.layout.views)) {
-      if (view.resource.scheme === 'task' && view.resource.id === id)
-        void controller.close(view.id).catch(options.onError)
-    }
+    const viewIds = Object.values(controller.layout.views)
+      .filter(view => view.resource.scheme === 'task' && view.resource.id === id)
+      .map(view => view.id)
+    if (viewIds.length)
+      await controller.closeMany(viewIds)
+    await persistence.flush()
   }
 
   async function beforeClose(view: WorkbenchView, closing?: ReadonlySet<string>): Promise<ViewCloseDecision> {

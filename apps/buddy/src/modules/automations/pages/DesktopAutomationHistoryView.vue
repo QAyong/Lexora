@@ -36,7 +36,7 @@ async function deleteOccurrence(occurrenceId: string): Promise<void> {
   }
   if (result.status === 'succeeded' && result.value) {
     if (conversationId)
-      onTaskDeleted(conversationId)
+      await onTaskDeleted(conversationId)
     await refreshTasks()
   }
 }

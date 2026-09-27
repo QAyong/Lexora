@@ -7,7 +7,7 @@ import type {
 import type { DesktopCommandId } from '@buddy-electron/shared/desktopCommands'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import { DESKTOP_COMMAND_REGISTRY, getDesktopCommand } from '@buddy-electron/shared/desktopCommands'
-import { PanelRight20Regular } from '@vicons/fluent'
+import { ArrowSwap20Regular, PanelRightContract20Regular, PanelRightExpand20Regular } from '@vicons/fluent'
 import { useMessage } from 'naive-ui'
 import { computed, onBeforeUnmount, onMounted, onScopeDispose, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
@@ -25,12 +25,16 @@ const props = defineProps<{
   appSidebarCollapsed: boolean
   contextAvailable: boolean
   contextOpen: boolean
+  contextIsChat: boolean
+  contextSwapAvailable: boolean
+  contextSwapped: boolean
   language: BuddyLocale
   shortcutBindings: Readonly<Record<string, readonly string[]>>
 }>()
 const emit = defineEmits<{
   toggleAppSidebar: []
   toggleContext: []
+  toggleContextPosition: []
 }>()
 
 const desktopApi = requireDesktopApi()
@@ -45,6 +49,9 @@ const platform = computed(() => props.appInfo?.platform ?? 'linux')
 const maximizeLabel = computed(() => isMaximized.value
   ? t('desktop.window.restore')
   : t('desktop.window.maximize'))
+const contextToggleLabel = computed(() => props.contextIsChat
+  ? t(props.contextOpen ? 'desktop.chat.collapse' : 'desktop.chat.open')
+  : t(props.contextOpen ? 'desktop.context.collapse' : 'desktop.context.open'))
 let windowStateVersion = 0
 
 const rendererCommandHandlers = {
@@ -182,8 +189,19 @@ function applyWindowState(state: DesktopWindowState) {
         @pointerdown.stop
       >
         <button
+          v-if="contextSwapAvailable"
+          :aria-label="t('desktop.context.swapPosition')"
+          :aria-pressed="contextSwapped"
+          class="desktop-title-bar__control"
+          data-testid="context-panel-position-toggle"
+          type="button"
+          @click="emit('toggleContextPosition')"
+        >
+          <DesktopIcon :component="ArrowSwap20Regular" />
+        </button>
+        <button
           v-if="contextAvailable"
-          :aria-label="t(contextOpen ? 'desktop.context.collapse' : 'desktop.context.open')"
+          :aria-label="contextToggleLabel"
           :aria-expanded="contextOpen"
           class="desktop-title-bar__control"
           :class="{ 'is-active': contextOpen }"
@@ -191,7 +209,7 @@ function applyWindowState(state: DesktopWindowState) {
           type="button"
           @click="emit('toggleContext')"
         >
-          <DesktopIcon :component="PanelRight20Regular" />
+          <DesktopIcon :component="contextOpen ? PanelRightContract20Regular : PanelRightExpand20Regular" />
         </button>
         <button
           :aria-label="t('desktop.window.minimize')"

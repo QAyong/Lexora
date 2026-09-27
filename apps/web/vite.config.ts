@@ -1,3 +1,4 @@
+import type { PluginOption } from 'vite'
 import process from 'node:process'
 import { fileURLToPath, URL } from 'node:url'
 import { SERVER_PATH, SERVER_PORT } from '@haohaoxue/lexora-contracts/server'
@@ -7,8 +8,7 @@ import UnoCSS from 'unocss/vite'
 import ElementPlus from 'unplugin-element-plus/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
-import { loadEnv } from 'vite'
-import { defineConfig } from 'vitest/config'
+import { defineConfig, loadEnv } from 'vite'
 
 const elementPlusResolver = ElementPlusResolver({
   importStyle: 'css',
@@ -85,7 +85,7 @@ export default defineConfig(({ mode }) => {
       Components({
         dts: './components.d.ts',
         resolvers: [elementPlusResolver],
-      }),
+      }) as PluginOption,
       ElementPlus({}),
     ],
     resolve: {
