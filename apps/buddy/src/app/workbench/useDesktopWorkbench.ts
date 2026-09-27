@@ -385,13 +385,15 @@ export function useDesktopWorkbench(options: { api: LexoraDesktopApi, stores: De
     return controller.closeMany(contextViews(options.resources().allTabs.value.filter(tab => tab.scope === `task:${id}`).map(tab => tab.id)))
   }
 
-  function discardTask(id: string) {
+  async function discardTask(id: string): Promise<void> {
     deletedTasks.add(id)
     options.resources().discardConversation(id)
-    for (const view of Object.values(controller.layout.views)) {
-      if (view.resource.scheme === 'task' && view.resource.id === id)
-        void controller.close(view.id).catch(options.onError)
-    }
+    const viewIds = Object.values(controller.layout.views)
+      .filter(view => view.resource.scheme === 'task' && view.resource.id === id)
+      .map(view => view.id)
+    if (viewIds.length)
+      await controller.closeMany(viewIds)
+    await persistence.flush()
   }
 
   async function beforeClose(view: WorkbenchView, closing?: ReadonlySet<string>): Promise<ViewCloseDecision> {

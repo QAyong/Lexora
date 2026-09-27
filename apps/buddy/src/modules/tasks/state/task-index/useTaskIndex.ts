@@ -18,7 +18,7 @@ interface TaskIndexOptions {
   applicationSettings: ApplicationSettings
   ready: Readonly<Ref<boolean>>
   beforeTaskDelete?: (id: string) => Promise<boolean>
-  onTaskDeleted?: (id: string) => void
+  onTaskDeleted?: (id: string) => void | Promise<void>
   onSpaceCreated?: (id: string) => Promise<void>
 }
 
@@ -98,7 +98,7 @@ export function useTaskIndex(options: TaskIndexOptions) {
           return
         await api.conversations.delete(id)
         if (!disposed)
-          options.onTaskDeleted?.(id)
+          await options.onTaskDeleted?.(id)
         await refreshAfterMutation()
       }
       catch (error) {
