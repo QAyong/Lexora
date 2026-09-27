@@ -17,6 +17,13 @@ afterEach(() => {
 })
 
 describe('activity disclosure', () => {
+  it('keeps the turn divider visible while running before process nodes arrive', () => {
+    const { root } = mountTurn([])
+
+    expect(root.querySelector('.buddy-chat-agent-turn__divider')).not.toBeNull()
+    expect(root.querySelector('.buddy-chat-agent-turn__process-content')).toBeNull()
+  })
+
   it('keeps a single tool and its open output stable while model progress runs independently', async () => {
     vi.useFakeTimers()
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: () => {}, configurable: true })

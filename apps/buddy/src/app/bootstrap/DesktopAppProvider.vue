@@ -206,6 +206,7 @@ const shellBindings: DesktopShellBindings = {
   pages,
   shortcuts,
   contextPanelGlobal: computed(() => stores.applicationSettings.config.value?.desktop.contextPanelGlobal ?? false),
+  contextPanelMode: computed(() => stores.applicationSettings.config.value?.desktop.contextPanelMode ?? 'task'),
   workbench,
   resources,
   resourceContext: {

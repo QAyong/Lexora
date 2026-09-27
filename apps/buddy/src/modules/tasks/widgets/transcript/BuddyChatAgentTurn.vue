@@ -118,6 +118,7 @@ const actionCopyText = computed(() => resultNoticeText.value ?? statusLabel.valu
         <span class="buddy-chat-agent-turn__duration">{{ duration }}</span>
       </div>
     </div>
+    <div class="buddy-chat-agent-turn__divider" aria-hidden="true" />
     <BuddyChatAgentTurnFlow
       v-if="turn.nodes.length || failureDetailText"
       ref="flow"
@@ -174,12 +175,17 @@ const actionCopyText = computed(() => resultNoticeText.value ?? statusLabel.valu
   gap: 12px;
 }
 
+.buddy-chat-agent-turn__divider {
+  min-width: 0;
+  margin-top: var(--buddy-chat-gap-block);
+  border-top: 1px solid var(--buddy-border-subtle);
+}
+
 .buddy-chat-agent-turn__process-toggle {
   width: 100%;
   max-width: none;
   padding: 0 0 8px;
   border: 0;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--buddy-border-subtle) 70%, transparent);
   border-radius: 0;
   background: transparent;
   color: inherit;

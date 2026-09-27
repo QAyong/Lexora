@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import DesktopStartupScreen from '@/app/bootstrap/DesktopStartupScreen.vue'
 import DesktopAppSidebar from '@/app/shell/DesktopAppSidebar.vue'
 import DesktopTitleBar from '@/app/shell/window/DesktopTitleBar.vue'
+import { resolveContextPanePlacementOnChange } from './contextPanePlacement'
 import { desktopRouteLocations } from '@/shared/navigation/desktopRoutes'
 import { useDesktopUi } from '@/shared/ui/desktopUiContext'
 import WorkbenchMountPoint from '@/workbench/browser/mounts/WorkbenchMountPoint.vue'
@@ -28,6 +29,23 @@ watch([activeView, bindings.resources.isOpen], ([view, resourcePanelOpen]) => {
   if (view !== 'lexora.tasks' || !resourcePanelOpen)
     chatPaneHidden.value = false
 })
+
+watch(
+  [bindings.contextPanelMode, () => bindings.workbench.activeTask.value],
+  ([mode, task], [previousMode, previousTask]) => {
+    const next = resolveContextPanePlacementOnChange({
+      mode,
+      previousMode,
+      taskChanged: task !== previousTask,
+      current: {
+        contextOnLeft: contextOnLeft.value,
+        chatPaneHidden: chatPaneHidden.value,
+      },
+    })
+    contextOnLeft.value = next.contextOnLeft
+    chatPaneHidden.value = next.chatPaneHidden
+  },
+)
 
 function toggleCurrentRightRegion() {
   if (rightRegionIsChat.value) {

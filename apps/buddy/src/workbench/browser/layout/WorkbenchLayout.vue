@@ -68,6 +68,11 @@ const {
   sidebarResizable: () => props.sidebarResizable,
   sidebarVisible,
 })
+const contextPaneStyle = computed(() => {
+  if (!props.workspaceVisible && props.contextVisible)
+    return { ...contextStyle.value, width: 'auto', flex: '1 1 0%' }
+  return contextStyle.value
+})
 
 let sidebarTransitionTimer: number | null = null
 
@@ -171,7 +176,7 @@ onBeforeUnmount(() => {
       <slot />
     </main>
     <div
-      v-if="$slots.context && contextVisible"
+      v-if="$slots.context && contextVisible && workspaceVisible"
       class="desktop-workbench-layout__resizer"
       :class="{ 'is-active': activePanel === 'context', 'is-context-leading': contextOnLeft }"
       data-testid="workbench-context-resizer"
@@ -185,7 +190,7 @@ onBeforeUnmount(() => {
       @keydown="handleResizeKeydown('context', $event)"
       @pointerdown="beginResize('context', $event)"
     />
-    <aside v-if="$slots.context" v-show="contextVisible" ref="context" class="desktop-workbench-layout__context" :class="{ 'is-context-leading': contextOnLeft }" :style="contextStyle" :inert="!contextVisible" :aria-hidden="!contextVisible">
+    <aside v-if="$slots.context" v-show="contextVisible" ref="context" class="desktop-workbench-layout__context" :class="{ 'is-context-leading': contextOnLeft }" :style="contextPaneStyle" :inert="!contextVisible" :aria-hidden="!contextVisible">
       <slot name="context" />
     </aside>
     <div v-if="activePanel" class="desktop-workbench-layout__resize-shield" />
