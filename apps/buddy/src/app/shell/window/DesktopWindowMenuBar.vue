@@ -12,9 +12,10 @@ import {
 } from '@buddy-electron/shared/desktopCommands'
 import { formatKeybinding } from '@buddy-shared/shortcuts/keybinding'
 import {
-  PanelLeft20Regular,
+  PanelLeftContract20Regular,
+  PanelLeftExpand20Regular,
 } from '@vicons/fluent'
-import { NDropdown } from 'naive-ui'
+import { NDropdown, NTooltip } from 'naive-ui'
 import { computed, h, shallowRef } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import { BRAND_ASSET_URLS } from '@/shared/branding/brandAssets'
@@ -111,16 +112,21 @@ const nodeProps: DropdownNodeProps = () => ({
     @mousedown.stop
     @pointerdown.stop
   >
-    <button
-      type="button"
-      class="desktop-window-menu__sidebar-trigger"
-      :aria-label="t(sidebarCollapsed ? 'desktop.layout.expandSidebar' : 'desktop.layout.collapseSidebar')"
-      :aria-expanded="!sidebarCollapsed"
-      aria-controls="desktop-task-sidebar"
-      @click="emit('toggleSidebar')"
-    >
-      <DesktopIcon :component="PanelLeft20Regular" />
-    </button>
+    <NTooltip placement="bottom">
+      <template #trigger>
+        <button
+          type="button"
+          class="desktop-window-menu__sidebar-trigger"
+          :aria-label="t(sidebarCollapsed ? 'desktop.layout.expandSidebar' : 'desktop.layout.collapseSidebar')"
+          :aria-expanded="!sidebarCollapsed"
+          aria-controls="desktop-task-sidebar"
+          @click="emit('toggleSidebar')"
+        >
+          <DesktopIcon :component="sidebarCollapsed ? PanelLeftExpand20Regular : PanelLeftContract20Regular" />
+        </button>
+      </template>
+      {{ t(sidebarCollapsed ? 'desktop.layout.expandSidebar' : 'desktop.layout.collapseSidebar') }}
+    </NTooltip>
     <NDropdown
       v-for="menu in menuTriggers"
       :key="menu.id"
