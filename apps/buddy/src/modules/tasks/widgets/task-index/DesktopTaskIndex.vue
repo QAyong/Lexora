@@ -209,7 +209,7 @@ function openSearchSpace(spaceId: string) {
               :language="language"
               :now="relativeTimeNow"
               :occurred-at="item.task.automationOccurrence?.scheduledFor ?? item.task.updatedAt"
-              :pin-mode="item.pinnedTopLevel ? 'unpin' : undefined"
+              :pin-mode="item.pinnedTopLevel ? 'unpin' : 'pin'"
               :space-task="item.spaceTask"
               :reorderable="item.pinnedTopLevel"
               :reorder-target="item.pinnedTopLevel"
@@ -220,7 +220,7 @@ function openSearchSpace(spaceId: string) {
               @drag-start="beginPinnedDrag(item.pinKey!)"
               @drop="dropPinnedItem(item.pinKey!, $event)"
               @open="emit('openTask', item.task.id)"
-              @pin="unpinItem(item.pinKey!)"
+              @pin="item.pinnedTopLevel ? unpinItem(item.pinKey!) : pinTask(item.task.id)"
               @rename="requestTaskRename(item.task)"
             />
           </template>
@@ -259,11 +259,13 @@ function openSearchSpace(spaceId: string) {
               :language="language"
               :now="relativeTimeNow"
               :occurred-at="item.task.automationOccurrence?.scheduledFor ?? item.task.updatedAt"
+              pin-mode="pin"
               :space-task="item.spaceTask"
               v-bind="markBindings(item.task.id)"
               :title="getTaskTitle(item.task)"
               @delete="requestTaskDelete(item.task)"
               @open="emit('openTask', item.task.id)"
+              @pin="pinTask(item.task.id)"
               @rename="requestTaskRename(item.task)"
             />
           </template>

@@ -37,7 +37,7 @@ export function resolveTaskIndexProjection(input: {
   const activeSpaces = input.spaces.filter(space => space.revokedAt === null)
   const spacesById = new Map(activeSpaces.map(space => [space.id, space]))
   const globalTasks = input.tasks.filter(task => task.spaceId === null)
-  const globalTasksById = new Map(globalTasks.map(task => [task.id, task]))
+  const tasksById = new Map(input.tasks.map(task => [task.id, task]))
   const tasksBySpace = new Map<string, LocalConversationSummary[]>()
 
   for (const task of input.tasks) {
@@ -51,7 +51,7 @@ export function resolveTaskIndexProjection(input: {
   const pinnedItems = resolveVisiblePinnedItems({
     items: input.pinnedItems,
     spacesById,
-    tasksById: globalTasksById,
+    tasksById,
   })
   const pinnedSpaceIds = new Set(pinnedItems
     .filter(item => item.kind === 'space')
@@ -66,7 +66,7 @@ export function resolveTaskIndexProjection(input: {
       const pinKey = getDesktopTaskPinnedItemKey(item)
       if (item.kind === 'conversation') {
         return [{
-          task: globalTasksById.get(item.id)!,
+          task: tasksById.get(item.id)!,
           key: `pinned:${pinKey}`,
           kind: 'task' as const,
           pinKey,
@@ -84,7 +84,8 @@ export function resolveTaskIndexProjection(input: {
       }]
       if (!input.expandedSpaceIds.has(space.id))
         return rows
-      const spaceTasks = tasksBySpace.get(space.id) ?? []
+      const spaceTasks = (tasksBySpace.get(space.id) ?? [])
+        .filter(task => !pinnedConversationIds.has(task.id))
       return rows.concat(spaceTasks.map(task => ({
         task,
         key: `pinned:${pinKey}:conversation:${task.id}`,
@@ -97,7 +98,8 @@ export function resolveTaskIndexProjection(input: {
       .filter(space => !pinnedSpaceIds.has(space.id))
       .flatMap(space => createSpaceRows(
         space,
-        tasksBySpace.get(space.id) ?? [],
+        (tasksBySpace.get(space.id) ?? [])
+          .filter(task => !pinnedConversationIds.has(task.id)),
         input.expandedSpaceIds.has(space.id),
       )),
     globalTasks: globalTasks.filter(task => !pinnedConversationIds.has(task.id)),
