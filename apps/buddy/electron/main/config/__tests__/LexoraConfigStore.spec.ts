@@ -191,6 +191,11 @@ describe('lexoraConfigStore', () => {
         deviceName: '',
         userName: '',
       },
+      agentProfile: {
+        avatar: '',
+        name: '',
+        syncWithUserProfile: false,
+      },
       sidebarCollapsed: false,
       theme: 'dark',
     })

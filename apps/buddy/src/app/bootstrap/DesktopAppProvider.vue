@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DesktopUserProfileConfig } from '@buddy-electron/shared/desktopApi'
+import type { DesktopAgentProfileConfig, DesktopUserProfileConfig } from '@buddy-electron/shared/desktopApi'
 import type { DesktopShellBindings } from '../shell/desktopShellBindings'
 import type { DesktopBrowserGuestSurfaceHost } from '@/platform/browser/browserGuestSurface'
 import { DEFAULT_DESKTOP_CHAT_PREFERENCES } from '@buddy-electron/shared/desktopApi'
@@ -10,7 +10,7 @@ import { resolveBuddyLocale, translateBuddy } from '@/i18n/buddyI18n'
 import { useProvideAutomationContext } from '@/modules/automations'
 import { useExtensionState, useExtensionUiContributions, useExtensionViews, useProvideExtensionContext } from '@/modules/extensions'
 import { DesktopExtensionControl, DesktopExtensionFrameHost, DesktopExtensionMenu, DesktopExtensionOverlays, DesktopExtensionReviewHost, DesktopExtensionSlot } from '@/modules/extensions/ui'
-import { useProvideSettingsContext } from '@/modules/settings'
+import { resolveUserProfile, useProvideSettingsContext } from '@/modules/settings'
 import { useProvideSkillsContext } from '@/modules/skills'
 import { useProvideTaskEnvironment, useTaskIndex, useTaskResourcePanel } from '@/modules/tasks'
 import DesktopBrowserGuestHost from '@/platform/browser/DesktopBrowserGuestHost.vue'
@@ -203,10 +203,29 @@ const browserGuests = useBrowserGuestHost(browserGuestHost)
 onScopeDispose(workbench.controller.subscribe(() => void nextTick(() => browserGuests.layout?.())))
 const toggleSidebar = () => void taskIndex.index.sidebar.setCollapsed(!taskIndex.index.sidebar.collapsed.value)
 const profileConfig = computed(() => stores.applicationSettings.config.value?.desktop.profile ?? { avatar: '', deviceName: '', userName: '' })
+const agentProfileConfig = computed(() => stores.applicationSettings.config.value?.desktop.agentProfile ?? { avatar: '', name: '', syncWithUserProfile: false })
+const agentIdentity = computed(() => {
+  const profile = agentProfileConfig.value
+  if (!profile.syncWithUserProfile)
+    return { avatar: profile.avatar, avatarColor: null, initials: null, name: profile.name }
+  const resolved = resolveUserProfile(stores.applicationSettings.config.value?.desktop.profile, shell.appInfo.value)
+  return {
+    avatar: resolved.avatarUrl ?? '',
+    avatarColor: resolved.avatarUrl ? null : resolved.avatarColor,
+    initials: resolved.avatarUrl ? null : resolved.initials,
+    name: resolved.userName,
+  }
+})
 async function updateProfile(patch: Partial<DesktopUserProfileConfig>) {
   const saved = await stores.applicationSettings.updateSettings({ desktop: { profile: patch } })
   if (saved)
     message.success(translateBuddy(stores.applicationSettings.language.value, 'desktop.account.saveSuccess'))
+  return saved
+}
+async function updateAgentProfile(patch: Partial<DesktopAgentProfileConfig>) {
+  const saved = await stores.applicationSettings.updateSettings({ desktop: { agentProfile: patch } })
+  if (saved)
+    message.success(translateBuddy(stores.applicationSettings.language.value, 'desktop.agent.saveSuccess'))
   return saved
 }
 
@@ -235,6 +254,7 @@ useProvideDesktopUi({
   isDark: toRef(() => props.isDark),
   chat: computed(() => stores.applicationSettings.config.value?.desktop.chat ?? DEFAULT_DESKTOP_CHAT_PREFERENCES),
   language: stores.applicationSettings.language,
+  agentIdentity,
   sidebarCollapsed: taskIndex.index.sidebar.collapsed,
 })
 useProvideTaskEnvironment({
@@ -252,6 +272,7 @@ useProvideSettingsContext({
   dataSettings: capabilities.dataSettings,
   platformCapabilities: shell.platformCapabilities,
   profile: { config: profileConfig, update: updateProfile },
+  agentProfile: { config: agentProfileConfig, update: updateAgentProfile },
   providerSettings: stores.modelProviders,
   ready,
   webSettings: capabilities.webSettings,
