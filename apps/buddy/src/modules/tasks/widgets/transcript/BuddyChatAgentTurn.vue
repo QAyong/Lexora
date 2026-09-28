@@ -104,7 +104,7 @@ const actionCopyText = computed(() => resultNoticeText.value ?? statusLabel.valu
       :disabled="isActive"
       @click="collapsed = !collapsed"
     >
-      <BuddyChatAgentIdentity :as="'span'" :language="language" />
+      <BuddyChatAgentIdentity as="span" :language="language" />
       <span class="buddy-chat-agent-turn__status">
         <span class="buddy-chat-agent-turn__status-label">{{ statusLabel }}</span>
         <span class="buddy-chat-agent-turn__duration">{{ duration }}</span>

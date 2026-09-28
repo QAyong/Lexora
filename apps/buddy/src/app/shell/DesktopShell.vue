@@ -5,13 +5,13 @@ import { useRoute, useRouter } from 'vue-router'
 import DesktopStartupScreen from '@/app/bootstrap/DesktopStartupScreen.vue'
 import DesktopAppSidebar from '@/app/shell/DesktopAppSidebar.vue'
 import DesktopTitleBar from '@/app/shell/window/DesktopTitleBar.vue'
-import { resolveContextPanePlacementOnChange } from './contextPanePlacement'
 import { desktopRouteLocations } from '@/shared/navigation/desktopRoutes'
 import { useDesktopUi } from '@/shared/ui/desktopUiContext'
 import WorkbenchMountPoint from '@/workbench/browser/mounts/WorkbenchMountPoint.vue'
 import WorkbenchHost from '@/workbench/browser/WorkbenchHost.vue'
 import DesktopWorkbenchArea from '../workbench/DesktopWorkbenchArea.vue'
 import DesktopWorkbenchView from '../workbench/DesktopWorkbenchView.vue'
+import { resolveContextPanePlacementOnChange } from './contextPanePlacement'
 
 const { bindings } = defineProps<{ bindings: DesktopShellBindings }>()
 const route = useRoute()

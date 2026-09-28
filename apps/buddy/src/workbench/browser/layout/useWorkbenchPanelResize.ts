@@ -213,10 +213,12 @@ export function useWorkbenchPanelResize(options: UseDesktopWorkbenchResizeOption
     const step = event.shiftKey ? KEYBOARD_RESIZE_LARGE_STEP : KEYBOARD_RESIZE_STEP
     let nextWidth: number | null = null
 
-    if (event.key === 'Home')
+    if (event.key === 'Home') {
       nextWidth = range.minimum
-    else if (event.key === 'End')
+    }
+    else if (event.key === 'End') {
       nextWidth = range.maximum
+    }
     else if (event.key === 'ArrowLeft') {
       const contextDelta = options.contextOnLeft?.() ? -step : step
       nextWidth = currentWidth + (panel === 'context' ? contextDelta : -step)

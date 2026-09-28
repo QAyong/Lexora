@@ -52,7 +52,15 @@ function fixture() {
     taskMarks: { list: async () => [], states: async () => [] },
     workspaceState: { read: async () => null },
   } as unknown as LexoraDesktopApi['localChat']
-  const index = scope.run(() => useTaskIndex({ api, applicationSettings: { config: shallowRef(null), language: shallowRef('zh-CN') } as unknown as ApplicationSettings, ready: shallowRef(true), beforeTaskDelete: beforeDelete, onTaskDeleted: (id) => { deleted.push(id) } }))!
+  const index = scope.run(() => useTaskIndex({
+    api,
+    applicationSettings: { config: shallowRef(null), language: shallowRef('zh-CN') } as unknown as ApplicationSettings,
+    ready: shallowRef(true),
+    beforeTaskDelete: beforeDelete,
+    onTaskDeleted: (id) => {
+      deleted.push(id)
+    },
+  }))!
   const owner = paneScope.run(() => useTaskSpaces({
     index,
     activateDraftScope: (id) => {
