@@ -85,6 +85,8 @@ export default {
   'desktop.browser.screenshotSaved': '截图已保存',
   'desktop.browser.screenshotCopied': '截图已复制到剪贴板',
   'desktop.browser.screenshotFailed': '截图失败，请重试或在浏览器设置中切换保存方式。',
+  'desktop.settings.defaultPermissionMode': '新任务默认权限',
+  'desktop.settings.defaultPermissionModeDescription': '只影响新建任务，已有会话保持原模式。',
   'desktop.settings.windowBehavior': '窗口行为',
   'desktop.settings.minimizeToTrayOnClose': '关闭窗口时最小化到托盘',
   'desktop.settings.minimizeToTrayOnCloseDescription': '开启后窗口会隐藏，Lexora Buddy 仍在后台运行；关闭后点击关闭按钮会退出应用。',

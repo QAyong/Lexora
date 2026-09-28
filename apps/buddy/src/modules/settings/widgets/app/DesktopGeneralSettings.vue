@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { LexoraConfigPatch } from '@buddy-electron/shared/desktopApi'
+import type { BuddyPermissionMode } from '@buddy-shared/permissions/permissionMode'
 import type { ApplicationSettingsProps } from './typing'
+import { BUDDY_PERMISSION_MODES } from '@buddy-shared/permissions/permissionMode'
 import { NSelect, NSpin, NSwitch, useMessage } from 'naive-ui'
 import { computed, shallowRef, useId } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
+import { DesktopFullAccessConfirmationDialog } from '@/modules/prompt-input'
 
-type GeneralSettingField = 'language' | 'contextPanelMode' | 'contextPanelGlobal' | 'minimizeToTrayOnClose'
+type GeneralSettingField = 'language' | 'contextPanelMode' | 'contextPanelGlobal' | 'minimizeToTrayOnClose' | 'permissionMode'
 
 const props = defineProps<ApplicationSettingsProps>()
 const { languageOptions, t } = useBuddyI18n(() => props.language)
@@ -13,10 +16,37 @@ const message = useMessage()
 const pendingFields = shallowRef<ReadonlySet<GeneralSettingField>>(new Set())
 const globalPanelLabelId = useId()
 const minimizeToTrayLabelId = useId()
+const permissionModeLabelId = useId()
+const fullAccessConfirmationOpen = shallowRef(false)
 const contextPanelModes = computed(() => [
   { label: t('desktop.settings.contextPanelTask'), value: 'task' },
   { label: t('desktop.settings.contextPanelIndependent'), value: 'independent' },
 ])
+const permissionModeLabelKeys: Record<BuddyPermissionMode, 'desktop.chat.executionProfileReadOnly' | 'desktop.chat.permissionModeManual' | 'desktop.chat.permissionModePolicy' | 'desktop.chat.executionProfileFull'> = {
+  full_access: 'desktop.chat.executionProfileFull',
+  manual_approval: 'desktop.chat.permissionModeManual',
+  policy_approval: 'desktop.chat.permissionModePolicy',
+  read_only: 'desktop.chat.executionProfileReadOnly',
+}
+const permissionModeOptions = computed(() => BUDDY_PERMISSION_MODES.map(value => ({
+  label: t(permissionModeLabelKeys[value]),
+  value,
+})))
+
+function selectPermissionMode(value: string) {
+  if (!BUDDY_PERMISSION_MODES.includes(value as BuddyPermissionMode) || !props.config)
+    return
+  if (value === 'full_access') {
+    fullAccessConfirmationOpen.value = true
+    return
+  }
+  void updateSetting('permissionMode', { desktop: { chat: { permissionMode: value as BuddyPermissionMode } } })
+}
+
+function confirmFullAccess() {
+  fullAccessConfirmationOpen.value = false
+  void updateSetting('permissionMode', { desktop: { chat: { permissionMode: 'full_access' } } })
+}
 
 async function updateSetting(field: GeneralSettingField, patch: LexoraConfigPatch) {
   if (pendingFields.value.has(field))
@@ -39,6 +69,22 @@ async function updateSetting(field: GeneralSettingField, patch: LexoraConfigPatc
         {{ t('desktop.settings.category.general') }}
       </h2>
       <div class="desktop-general-settings__group">
+        <div class="desktop-settings-row" data-testid="default-permission-mode-setting">
+          <div class="desktop-settings-row__copy">
+            <strong :id="permissionModeLabelId">{{ t('desktop.settings.defaultPermissionMode') }}</strong>
+            <small>{{ t('desktop.settings.defaultPermissionModeDescription') }}</small>
+          </div>
+          <div class="desktop-settings-row__control">
+            <NSelect
+              :aria-labelledby="permissionModeLabelId"
+              :options="permissionModeOptions"
+              :value="config.desktop.chat.permissionMode"
+              :disabled="pendingFields.has('permissionMode')"
+              @update:value="selectPermissionMode"
+            />
+            <NSpin v-if="pendingFields.has('permissionMode')" size="small" />
+          </div>
+        </div>
         <div class="desktop-settings-row">
           <strong>{{ t('settings.language') }}</strong>
           <div class="desktop-settings-row__control">
@@ -114,6 +160,12 @@ async function updateSetting(field: GeneralSettingField, patch: LexoraConfigPatc
         </div>
       </div>
     </section>
+    <DesktopFullAccessConfirmationDialog
+      :language="language"
+      :show="fullAccessConfirmationOpen"
+      @cancel="fullAccessConfirmationOpen = false"
+      @confirm="confirmFullAccess"
+    />
   </section>
 </template>
 

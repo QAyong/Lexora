@@ -2,7 +2,7 @@
 
 **日期：** 2026-09-28
 
-**状态：** 草案（设计已确认，尚未实现）
+**状态：** 已实现；自动化测试覆盖核心配置与草稿逻辑，待手动验收
 
 **目标：** 在设置页新增一项"新任务默认权限"，让用户把新任务的默认审批模式从"智能审批"改成自己偏好的模式（例如"完全访问"）。该设置只影响此后新建的任务，不追溯已有会话。
 
@@ -118,6 +118,8 @@ export const BUDDY_DEFAULT_PERMISSION_MODE: BuddyPermissionMode = 'policy_approv
 3. 用户回到刚才那个任务 → 仍然是"智能审批"（它的记录已经存在）；
 4. 用户新建任务 → 才是"完全访问"。
 
+配置尚未加载时创建的草稿也按此规则处理：先用 `BUDDY_DEFAULT_PERMISSION_MODE`（"智能审批"）创建；如果该草稿随后已落库，配置加载完成或用户修改设置后都不追溯刷新它。这里的"新建任务使用新默认值"指创建草稿时默认配置已经可用的任务；配置加载前创建的草稿属于已存在草稿。
+
 这不是缺陷，而是"已落库的记录不被追溯修改"。本方案接受该行为（决定 2），但必须在设置页写清说明文案。
 
 如果将来要改成"立刻跟随"，需要额外引入"该草稿是否被用户手动改过权限"的标记，只在"内容为空 + 未手动改过"时刷新。这属于后续可选方向，不在本次范围。
@@ -128,7 +130,7 @@ export const BUDDY_DEFAULT_PERMISSION_MODE: BuddyPermissionMode = 'policy_approv
 
 - 位置：`apps/buddy/src/modules/settings/widgets/app/DesktopGeneralSettings.vue`，复用现有的 `desktop-settings-row` 结构与样式。
 - 控件：`NSelect`，4 个选项。
-- 文案：**复用**输入框权限弹窗已有的文案键，不新写一套，避免以后改文案要改两处：
+- 文案：**复用**输入框权限弹窗已有的标签和描述文案键，不新写一套，避免以后改文案要改两处。权限弹窗会根据沙盒状态切换 sandbox 描述；设置页不展示沙盒状态专属描述，只展示下列通用描述，因为此设置表达的是默认权限模式，而非当前任务的实际沙盒边界：
   - 标签：`desktop.chat.executionProfileReadOnly`、`desktop.chat.permissionModeManual`、`desktop.chat.permissionModePolicy`、`desktop.chat.executionProfileFull`
   - 描述：`desktop.chat.permissionModeReadOnlyDescription`、`desktop.chat.permissionModeManualDescription`、`desktop.chat.permissionModePolicyDescription`、`desktop.chat.permissionModeFullDescription`
 - 行下方常驻说明文案（新增键）："只影响新建任务，已有会话保持原模式。"
@@ -148,6 +150,8 @@ export const BUDDY_DEFAULT_PERMISSION_MODE: BuddyPermissionMode = 'policy_approv
 | `apps/buddy/src/modules/tasks/state/useTaskCapability.ts` | 从配置计算默认权限设置并传入 |
 | `apps/buddy/src/modules/settings/widgets/app/DesktopGeneralSettings.vue` | 新增设置行与完全访问确认 |
 | `apps/buddy/src/i18n/locales/zh-CN/settings.ts`、`en-US/settings.ts` | 新增行标题与说明文案 |
+| 相关类型与 schema 测试 | 验证配置类型、默认值、合法/非法值校验及读写映射 |
+| `useChatDrafts`、设置组件及配置存储相关测试 | 覆盖默认注入、配置加载前回退、既有草稿不追溯、确认取消与保存失败等边界 |
 
 **最容易漏的一处：** `desktopConfigSchema.chat` 使用了 `.passthrough()`。只往 TOML 里写 `permission_mode` 而不同步 `decodeConfig` / `encodeConfig` 的映射，值会被静默保留但读不出来 —— 表现为"设置改了但完全没生效，而且不报错"。
 
@@ -160,8 +164,10 @@ export const BUDDY_DEFAULT_PERMISSION_MODE: BuddyPermissionMode = 'policy_approv
 - [ ] 修改设置后，已有会话与已有草稿的权限模式保持不变。
 - [ ] 设置页的说明文案明确写出"只影响新建任务"。
 - [ ] 后台定时任务的 `executionProfile` 不受该设置影响。
-- [ ] 配置文件写入非法值时被拒绝，不产生半写入状态。
-- [ ] 配置加载完成前（`config` 为 `null`）新建的草稿回退到"智能审批"，不报错。
+- [ ] 配置更新入口拒绝非法 `permissionMode`，不产生半写入状态；配置文件加载时遇到非法 `permission_mode`，按配置 store 的既有 schema 校验策略处理，不得静默接受非法值，并应覆盖相应行为的测试。
+- [ ] 配置加载完成前（`config` 为 `null`）新建的草稿回退到"智能审批"，不报错；该草稿之后不因配置加载完成而自动刷新权限。
+- [ ] 完全访问确认对话框取消时不写入设置；确认后才提交更新。
+- [ ] 设置保存失败时界面显示失败反馈，选择器恢复为配置中的实际值；保存进行中禁用重复提交。
 
 ## 6. 风险和取舍
 
@@ -175,6 +181,16 @@ export const BUDDY_DEFAULT_PERMISSION_MODE: BuddyPermissionMode = 'policy_approv
 - 是否在输入框权限弹窗底部增加"设为默认"入口（让用户不必跳到设置页）。当前未纳入本次范围。
 - 是否需要在将来让"还没开始用的空任务"立刻跟随新默认值（4.2 末尾描述的可选方向）。
 
+## 8. 实现记录
+
+已实现本方案的配置持久化、设置页入口和新草稿默认值注入。配置仍以 `desktop.chat.permissionMode` 表示，并通过既有双向转换得到底层审批策略与执行档位；后台自动化不读取该设置。选择"完全访问"时复用现有确认对话框，保存失败时复用设置页错误提示，选择器由配置值控制。
+
+设置页效果截图：
+
+![新任务默认权限设置截图](assets/feature-005-default-permission-mode.png)
+
+自动化测试覆盖配置默认值、TOML 读写、非法值拒绝及新建草稿使用配置模式/既有草稿不追溯。验收清单暂不勾选：设置页完整交互、应用重启后生效及相关边界仍需手动验收；规范中未列出的组件级 UI 自动化测试也未补充。
+
 ---
 
-**状态说明：** 本文记录已确认的设计与验收标准，**尚未实现**。实现完成并通过验收后，需要回到本文补充"实现情况"并更新状态。
+**状态说明：** 实现已随本 PR 提交；验收清单保留为待验证项，合并前后可继续补充手动验收结果。

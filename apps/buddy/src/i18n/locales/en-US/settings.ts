@@ -87,6 +87,8 @@ export default {
   'desktop.browser.screenshotSaved': 'Screenshot saved',
   'desktop.browser.screenshotCopied': 'Screenshot copied to clipboard',
   'desktop.browser.screenshotFailed': 'Could not capture the screenshot. Retry or change the destination in browser settings.',
+  'desktop.settings.defaultPermissionMode': 'Default permission for new tasks',
+  'desktop.settings.defaultPermissionModeDescription': 'Applies only to new tasks. Existing conversations keep their current mode.',
   'desktop.settings.windowBehavior': 'Window behavior',
   'desktop.settings.minimizeToTrayOnClose': 'Minimize to tray when closing the window',
   'desktop.settings.minimizeToTrayOnCloseDescription': 'When enabled, the window hides and Lexora Buddy keeps running in the background. When disabled, closing the window quits the app.',
