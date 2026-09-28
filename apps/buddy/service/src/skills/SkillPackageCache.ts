@@ -3,7 +3,7 @@ import type { LoadedSkill } from './skillFiles'
 import { createHash } from 'node:crypto'
 import { lstat, readdir } from 'node:fs/promises'
 import { basename, dirname, join, relative } from 'node:path'
-import { MAX_SKILL_BYTES, MAX_SKILL_FILES, MAX_SKILL_PACKAGE_BYTES, readSkill, requireSkillPath, SkillError } from './skillFiles'
+import { MAX_SKILL_BYTES, MAX_SKILL_FILES, MAX_SKILL_PACKAGE_BYTES, readSkill, readSkillDocument, requireSkillPath, SkillError } from './skillFiles'
 
 export type ResolvedSkill = Omit<LoadedSkill, 'files' | 'modes'>
 
@@ -16,6 +16,7 @@ const MAX_CACHED_PACKAGES = 256
 
 export class SkillPackageCache {
   readonly #packages = new Map<string, CachedPackage>()
+  readonly #documents = new Map<string, CachedPackage>()
   readonly #pending = new Map<string, Promise<ResolvedSkill>>()
 
   async load(filePath: string, allowedRoot: string): Promise<ResolvedSkill> {
@@ -31,8 +32,31 @@ export class SkillPackageCache {
     return loading
   }
 
+  async loadMetadata(filePath: string, allowedRoot: string): Promise<ResolvedSkill> {
+    const path = await requireSkillPath(allowedRoot, filePath)
+    const signature = fileSignature(path, await lstat(path, { bigint: true }))
+    const cached = this.#documents.get(path)
+    if (cached?.signature === signature) {
+      this.#documents.delete(path)
+      this.#documents.set(path, cached)
+      return cached.skill
+    }
+    this.#documents.delete(path)
+    const document = await readSkillDocument(path, allowedRoot)
+    if (!document.description)
+      throw new SkillError('SKILL_INVALID')
+    if (fileSignature(path, await lstat(path, { bigint: true })) !== signature)
+      throw new SkillError('SKILL_CHANGED')
+    const skill = { ...document, revision: document.referenceRevision }
+    this.#documents.set(path, { signature, skill })
+    while (this.#documents.size > MAX_CACHED_PACKAGES)
+      this.#documents.delete(this.#documents.keys().next().value!)
+    return skill
+  }
+
   clear() {
     this.#packages.clear()
+    this.#documents.clear()
   }
 
   async #load(path: string, allowedRoot: string): Promise<ResolvedSkill> {

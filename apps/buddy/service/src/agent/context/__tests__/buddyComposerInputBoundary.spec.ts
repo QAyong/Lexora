@@ -724,7 +724,7 @@ async function createFixture(options: {
     resources: {
       skillReadRoots: [],
       skillReferences: [],
-      approvedSkillPaths: [],
+      approvedSkills: [],
       context: { agentsFiles: [], diagnostics: [] },
       directoryContext: DIRECTORY_CONTEXT,
       revision: 'offline-s0',

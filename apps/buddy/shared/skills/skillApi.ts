@@ -8,6 +8,7 @@ export const skillReferenceSchema = z.object({
   id: idSchema,
   name: z.string().min(1),
   revision: z.string().min(1),
+  packageRevision: z.string().min(1).optional(),
 }).strict()
 export type SkillReference = z.infer<typeof skillReferenceSchema>
 
@@ -31,6 +32,7 @@ export const skillSchema = z.object({
   status: z.enum(['available', 'manual_only', 'disabled', 'shadowed', 'invalid']),
   shadowedBy: idSchema.nullable(),
   revision: z.string(),
+  referenceRevision: z.string().optional(),
   filePath: z.string(),
   origin: skillOriginSchema.nullable(),
   canUpdate: z.boolean(),
@@ -81,7 +83,7 @@ const previewSchema = z.object({
 export type SkillInstallPreview = DeepReadonly<z.infer<typeof previewSchema>>
 
 export const skillsRequestSchemas = {
-  skillScope: scopeSchema,
+  skillScope: scopeSchema.extend({ metadataOnly: z.boolean().optional() }),
   target: targetSchema,
   file: fileTargetSchema,
   directory: directoryRequestSchema,
