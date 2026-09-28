@@ -3,7 +3,7 @@ import type { LocalNotification } from '@buddy-shared/notifications/notification
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import type { DesktopNavigationEntry } from '@/shared/navigation/desktopPages'
 import { Alert20Regular } from '@vicons/fluent'
-import { NBadge, NPopover } from 'naive-ui'
+import { NBadge, NPopover, NTooltip } from 'naive-ui'
 import { computed, shallowRef } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import { DesktopNotificationCenter } from '@/modules/notifications/ui'
@@ -46,22 +46,24 @@ function openNotification(notification: LocalNotification) {
 
 <template>
   <footer class="desktop-sidebar-footer">
-    <button
-      v-for="entry in entries"
-      :key="entry.id"
-      class="desktop-sidebar-footer__entry"
-      :class="{ 'is-active': entry.active }"
-      type="button"
-      :aria-current="entry.active ? 'page' : undefined"
-      :aria-label="entry.title"
-      :title="entry.title"
-      :data-extension-navigation="entry.extensionId"
-      @click="emit('navigate', entry.id)"
-    >
-      <DesktopPluginIcon v-if="entry.icon.kind === 'plugin'" :src="entry.icon.url" />
-      <DesktopIcon v-else-if="entry.icon.kind === 'named'" :name="entry.icon.name" />
-      <DesktopIcon v-else :component="entry.icon.component" />
-    </button>
+    <NTooltip v-for="entry in entries" :key="entry.id">
+      <template #trigger>
+        <button
+          class="desktop-sidebar-footer__entry"
+          :class="{ 'is-active': entry.active }"
+          type="button"
+          :aria-current="entry.active ? 'page' : undefined"
+          :aria-label="entry.title"
+          :data-extension-navigation="entry.extensionId"
+          @click="emit('navigate', entry.id)"
+        >
+          <DesktopPluginIcon v-if="entry.icon.kind === 'plugin'" :src="entry.icon.url" />
+          <DesktopIcon v-else-if="entry.icon.kind === 'named'" :name="entry.icon.name" />
+          <DesktopIcon v-else :component="entry.icon.component" />
+        </button>
+      </template>
+      {{ entry.title }}
+    </NTooltip>
 
     <div class="desktop-sidebar-footer__notification">
       <NPopover
