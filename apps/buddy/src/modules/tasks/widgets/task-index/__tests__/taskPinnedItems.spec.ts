@@ -1,7 +1,12 @@
 import type { LocalConversationSummary } from '@buddy-shared/conversation/conversationApi'
 import type { LocalSpace } from '@buddy-shared/spaces/spaceApi'
 import { describe, expect, it } from 'vitest'
-import { resolveTaskIndexProjection } from '../taskPinnedItems'
+import {
+  DESKTOP_TASK_SIDEBAR_CONVERSATION_LIMIT,
+  DESKTOP_TASK_SIDEBAR_TASKS_GROUP_KEY,
+  resolveTaskIndexProjection,
+  spaceConversationGroupKey,
+} from '../taskPinnedItems'
 
 function createTask(id: string, spaceId: string | null): LocalConversationSummary {
   return {
@@ -63,5 +68,68 @@ describe('taskIndexProjection pinned conversations', () => {
     })
 
     expect(projection.pinnedRows).toEqual([])
+  })
+})
+
+describe('taskIndexProjection conversation limit', () => {
+  const tasks = Array.from({ length: 8 }, (_, index) => createTask(`task-${index}`, null))
+
+  it('caps the tasks group and appends an expand row with the remaining count', () => {
+    const projection = resolveTaskIndexProjection({
+      expandedSpaceIds: new Set(),
+      pinnedItems: [],
+      spaces: [],
+      tasks,
+    })
+
+    expect(projection.taskRows).toHaveLength(DESKTOP_TASK_SIDEBAR_CONVERSATION_LIMIT + 1)
+    expect(projection.taskRows.at(-1)).toEqual({
+      groupKey: DESKTOP_TASK_SIDEBAR_TASKS_GROUP_KEY,
+      key: `${DESKTOP_TASK_SIDEBAR_TASKS_GROUP_KEY}:expand`,
+      kind: 'expand',
+      remaining: 8 - DESKTOP_TASK_SIDEBAR_CONVERSATION_LIMIT,
+    })
+  })
+
+  it('shows every conversation once the group is expanded', () => {
+    const projection = resolveTaskIndexProjection({
+      expandedConversationGroups: new Set([DESKTOP_TASK_SIDEBAR_TASKS_GROUP_KEY]),
+      expandedSpaceIds: new Set(),
+      pinnedItems: [],
+      spaces: [],
+      tasks,
+    })
+
+    expect(projection.taskRows).toHaveLength(tasks.length)
+    expect(projection.taskRows.some(row => row.kind === 'expand')).toBe(false)
+  })
+
+  it('caps a Space conversation list independently', () => {
+    const projection = resolveTaskIndexProjection({
+      expandedSpaceIds: new Set(['space-a']),
+      pinnedItems: [],
+      spaces: [createSpace('space-a')],
+      tasks: Array.from({ length: 7 }, (_, index) => createTask(`task-a${index}`, 'space-a')),
+    })
+
+    const taskRows = projection.spaceRows.filter(row => row.kind !== 'space')
+    expect(taskRows).toHaveLength(DESKTOP_TASK_SIDEBAR_CONVERSATION_LIMIT + 1)
+    expect(taskRows.at(-1)).toMatchObject({
+      groupKey: spaceConversationGroupKey('space-a'),
+      kind: 'expand',
+      remaining: 2,
+    })
+  })
+
+  it('does not add an expand row when the group fits the limit', () => {
+    const projection = resolveTaskIndexProjection({
+      expandedSpaceIds: new Set(),
+      pinnedItems: [],
+      spaces: [],
+      tasks: tasks.slice(0, DESKTOP_TASK_SIDEBAR_CONVERSATION_LIMIT),
+    })
+
+    expect(projection.taskRows).toHaveLength(DESKTOP_TASK_SIDEBAR_CONVERSATION_LIMIT)
+    expect(projection.taskRows.some(row => row.kind === 'expand')).toBe(false)
   })
 })

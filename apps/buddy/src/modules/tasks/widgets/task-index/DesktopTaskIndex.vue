@@ -14,6 +14,7 @@ import { useBuddyI18n } from '@/i18n/buddyI18n'
 import DesktopSpaceDialog from '@/modules/tasks/widgets/task-index/DesktopSpaceDialog.vue'
 import DesktopTaskRow from '@/modules/tasks/widgets/task-index/DesktopTaskRow.vue'
 import DesktopTaskSearchDialog from '@/modules/tasks/widgets/task-index/DesktopTaskSearchDialog.vue'
+import DesktopTaskSidebarExpandRow from '@/modules/tasks/widgets/task-index/DesktopTaskSidebarExpandRow.vue'
 import DesktopTaskSidebarSection from '@/modules/tasks/widgets/task-index/DesktopTaskSidebarSection.vue'
 import DesktopTaskSpaceRow from '@/modules/tasks/widgets/task-index/DesktopTaskSpaceRow.vue'
 import {
@@ -80,6 +81,7 @@ const {
   dropPinnedItem,
   endPinnedDrag,
   enterPinnedDropTarget,
+  expandConversationGroup,
   getTaskTitle,
   getPinnedDropPosition,
   isSectionExpanded,
@@ -101,7 +103,7 @@ const {
   requestTaskRename,
   saveSpace,
   selectSpaceMenuAction,
-  globalTasks,
+  taskRows,
   taskDeleteTarget,
   taskRenameTarget,
   taskTitleDraft,
@@ -198,6 +200,12 @@ function openSearchSpace(spaceId: string) {
                 @toggle="toggleSpace(item.space.id)"
               />
             </div>
+            <DesktopTaskSidebarExpandRow
+              v-else-if="item.kind === 'expand'"
+              :label="t('desktop.tasks.expandRemaining', { count: item.remaining })"
+              space-task
+              @expand="expandConversationGroup(item.groupKey)"
+            />
             <DesktopTaskRow
               v-else
               :task-id="item.task.id"
@@ -251,6 +259,12 @@ function openSearchSpace(spaceId: string) {
                 @toggle="toggleSpace(item.space.id)"
               />
             </div>
+            <DesktopTaskSidebarExpandRow
+              v-else-if="item.kind === 'expand'"
+              :label="t('desktop.tasks.expandRemaining', { count: item.remaining })"
+              space-task
+              @expand="expandConversationGroup(item.groupKey)"
+            />
             <DesktopTaskRow
               v-else
               :task-id="item.task.id"
@@ -273,8 +287,8 @@ function openSearchSpace(spaceId: string) {
 
         <DesktopTaskSidebarSection
           :expanded="isSectionExpanded('tasks')"
-          :items="globalTasks"
-          key-field="id"
+          :items="taskRows"
+          key-field="key"
           :label="t('desktop.tasks.tasksSection')"
           :priority="DESKTOP_TASK_SIDEBAR_SECTION_PRIORITIES.tasks"
           :scroll-index="scrollAnchors.tasks"
@@ -284,21 +298,27 @@ function openSearchSpace(spaceId: string) {
           @scroll="index => recordScrollAnchor('tasks', index)"
           @update:expanded="value => setSectionExpanded('tasks', value)"
         >
-          <template #default="{ item: task }">
+          <template #default="{ item }">
+            <DesktopTaskSidebarExpandRow
+              v-if="item.kind === 'expand'"
+              :label="t('desktop.tasks.expandRemaining', { count: item.remaining })"
+              @expand="expandConversationGroup(item.groupKey)"
+            />
             <DesktopTaskRow
-              :task-id="task.id"
-              :active="task.id === activeConversationId"
-              :activity="task.activity"
-              v-bind="markBindings(task.id)"
+              v-else-if="item.kind === 'task'"
+              :task-id="item.task.id"
+              :active="item.task.id === activeConversationId"
+              :activity="item.task.activity"
+              v-bind="markBindings(item.task.id)"
               :language="language"
               :now="relativeTimeNow"
-              :occurred-at="task.automationOccurrence?.scheduledFor ?? task.updatedAt"
+              :occurred-at="item.task.automationOccurrence?.scheduledFor ?? item.task.updatedAt"
               pin-mode="pin"
-              :title="getTaskTitle(task)"
-              @delete="requestTaskDelete(task)"
-              @open="emit('openTask', task.id)"
-              @pin="pinTask(task.id)"
-              @rename="requestTaskRename(task)"
+              :title="getTaskTitle(item.task)"
+              @delete="requestTaskDelete(item.task)"
+              @open="emit('openTask', item.task.id)"
+              @pin="pinTask(item.task.id)"
+              @rename="requestTaskRename(item.task)"
             />
           </template>
         </DesktopTaskSidebarSection>
