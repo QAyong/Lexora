@@ -11,7 +11,6 @@ import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 import DesktopPluginIcon from '@/shared/ui/icon/DesktopPluginIcon.vue'
 
 const props = defineProps<{
-  appVersion?: string | null
   language: BuddyLocale
   navigation: readonly DesktopNavigationEntry[]
   notificationItems: ReadonlyArray<LocalNotification>
@@ -28,7 +27,6 @@ const emit = defineEmits<{
 const { t } = useBuddyI18n(() => props.language)
 const showNotifications = shallowRef(false)
 const notificationPopoverThemeOverrides = { padding: '0' } as const
-const versionLabel = computed(() => props.appVersion ? `v${props.appVersion}` : '')
 const FOOTER_ENTRY_IDS = ['lexora.settings', 'lexora.extensions', 'lexora.automations'] as const
 const entries = computed(() => FOOTER_ENTRY_IDS
   .map(id => props.navigation.find(entry => entry.id === id))
@@ -65,55 +63,49 @@ function openNotification(notification: LocalNotification) {
       <DesktopIcon v-else :component="entry.icon.component" />
     </button>
 
-    <NPopover
-      class="desktop-notification-popover"
-      content-class="desktop-notification-popover__content"
-      content-style="padding: 0"
-      :show="showNotifications"
-      trigger="click"
-      placement="top-end"
-      to=".buddy-app"
-      :theme-overrides="notificationPopoverThemeOverrides"
-      :width="320"
-      @update:show="updateNotificationVisibility"
-    >
-      <template #trigger>
-        <NBadge
-          :show="notificationUnseenCount > 0"
-          :value="notificationUnseenCount"
-          :max="99"
-          :offset="[-3, 3]"
-          type="info"
-        >
-          <button
-            class="desktop-sidebar-footer__entry desktop-sidebar-footer__notification"
-            :class="{ 'is-open': showNotifications }"
-            type="button"
-            :aria-label="t('desktop.notifications.open')"
-            :aria-expanded="showNotifications"
+    <div class="desktop-sidebar-footer__notification">
+      <NPopover
+        class="desktop-notification-popover"
+        content-class="desktop-notification-popover__content"
+        content-style="padding: 0"
+        :show="showNotifications"
+        trigger="click"
+        placement="top-end"
+        to=".buddy-app"
+        :theme-overrides="notificationPopoverThemeOverrides"
+        :width="320"
+        @update:show="updateNotificationVisibility"
+      >
+        <template #trigger>
+          <NBadge
+            :show="notificationUnseenCount > 0"
+            :value="notificationUnseenCount"
+            :max="99"
+            :offset="[-3, 3]"
+            type="info"
           >
-            <DesktopIcon :component="Alert20Regular" />
-          </button>
-        </NBadge>
-      </template>
-      <DesktopNotificationCenter
-        v-if="showNotifications"
-        :items="notificationItems"
-        :language="language"
-        :loading="notificationLoading"
-        :unseen-count="notificationUnseenCount"
-        @mark-all-seen="emit('markAllNotificationsSeen')"
-        @open="openNotification"
-      />
-    </NPopover>
-
-    <span
-      v-if="versionLabel"
-      class="desktop-sidebar-footer__version"
-      :title="`${t('desktop.navigation.workspace')} ${versionLabel}`"
-    >
-      {{ versionLabel }}
-    </span>
+            <button
+              class="desktop-sidebar-footer__entry desktop-sidebar-footer__notification-trigger"
+              :class="{ 'is-open': showNotifications }"
+              type="button"
+              :aria-label="t('desktop.notifications.open')"
+              :aria-expanded="showNotifications"
+            >
+              <DesktopIcon :component="Alert20Regular" />
+            </button>
+          </NBadge>
+        </template>
+        <DesktopNotificationCenter
+          v-if="showNotifications"
+          :items="notificationItems"
+          :language="language"
+          :loading="notificationLoading"
+          :unseen-count="notificationUnseenCount"
+          @mark-all-seen="emit('markAllNotificationsSeen')"
+          @open="openNotification"
+        />
+      </NPopover>
+    </div>
   </footer>
 </template>
 
@@ -164,20 +156,14 @@ function openNotification(notification: LocalNotification) {
   color: var(--buddy-nav-foreground);
 }
 
-.desktop-sidebar-footer__version {
-  overflow: hidden;
-  min-width: 0;
-  flex: 0 1 auto;
+.desktop-sidebar-footer__notification {
+  display: flex;
+  flex: none;
+  align-items: center;
   margin-left: auto;
-  padding-left: 0.35rem;
-  color: var(--buddy-text-muted);
-  font-size: 11px;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.desktop-sidebar-footer__notification :deep(.desktop-icon) {
+.desktop-sidebar-footer__notification-trigger :deep(.desktop-icon) {
   width: 1rem;
   height: 1rem;
 }

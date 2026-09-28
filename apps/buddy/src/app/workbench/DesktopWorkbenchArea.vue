@@ -61,7 +61,6 @@ function navigate(id: string) {
         <DesktopTaskIndexView :pending-task-ids="pendingTaskIds" :index="bindings.taskIndex" :active-task-id="bindings.workbench.activeTask.value?.session.activeTaskId.value ?? null" @open-task="bindings.workbench.openTask" @new-task="bindings.workbench.newTask">
           <template #footer>
             <DesktopSidebarFooter
-              :app-version="bindings.appInfo.value?.version ?? null"
               :language="language"
               :navigation="bindings.pages.navigation.value"
               :notification-items="bindings.notifications.items.value"

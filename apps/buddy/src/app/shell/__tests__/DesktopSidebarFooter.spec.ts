@@ -14,14 +14,13 @@ function createNavigation(activeId = 'lexora.tasks'): DesktopNavigationEntry[] {
   ]
 }
 
-function mountFooter(options: { activeId?: string, appVersion?: string | null, notificationUnseenCount?: number } = {}) {
+function mountFooter(options: { activeId?: string, notificationUnseenCount?: number } = {}) {
   const onNavigate = vi.fn()
   const onRefreshNotifications = vi.fn()
   const root = document.createElement('div')
   const app = createApp({
     render() {
       return h(DesktopSidebarFooter, {
-        appVersion: 'appVersion' in options ? options.appVersion : '0.9.2',
         language: 'zh-CN',
         navigation: createNavigation(options.activeId),
         notificationItems: [],
@@ -43,6 +42,18 @@ describe('desktopSidebarFooter', () => {
 
     const entries = [...root.querySelectorAll('.desktop-sidebar-footer__entry')]
     expect(entries.map(entry => entry.getAttribute('aria-label'))).toEqual(['设置', '插件', '自动化', '打开通知'])
+
+    app.unmount()
+  })
+
+  it('keeps the notification entry in the trailing slot of the footer', async () => {
+    const { app, root } = mountFooter()
+    await nextTick()
+
+    const footer = root.querySelector('.desktop-sidebar-footer')
+    const trailing = footer?.lastElementChild
+    expect(trailing?.classList.contains('desktop-sidebar-footer__notification')).toBe(true)
+    expect(trailing?.querySelector('.desktop-sidebar-footer__entry')?.getAttribute('aria-label')).toBe('打开通知')
 
     app.unmount()
   })
@@ -85,28 +96,6 @@ describe('desktopSidebarFooter', () => {
     await nextTick()
 
     expect(root.querySelector('.n-badge-sup')).toBeNull()
-
-    app.unmount()
-  })
-
-  it('renders the app version after the entries, aligned to the sidebar edge', async () => {
-    const { app, root } = mountFooter({ appVersion: '0.9.2' })
-    await nextTick()
-
-    const footer = root.querySelector('.desktop-sidebar-footer')
-    const version = root.querySelector('.desktop-sidebar-footer__version')
-    expect(version?.textContent?.trim()).toBe('v0.9.2')
-    expect(version?.getAttribute('title')).toBe('Lexora Buddy v0.9.2')
-    expect(footer?.lastElementChild).toBe(version)
-
-    app.unmount()
-  })
-
-  it('omits the version label when no version is available', async () => {
-    const { app, root } = mountFooter({ appVersion: null })
-    await nextTick()
-
-    expect(root.querySelector('.desktop-sidebar-footer__version')).toBeNull()
 
     app.unmount()
   })
