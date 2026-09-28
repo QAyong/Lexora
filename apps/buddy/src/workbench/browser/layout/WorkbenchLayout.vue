@@ -259,6 +259,10 @@ const contextPaneStyle = computed(() => {
   cursor: col-resize;
 }
 
+.desktop-workbench-layout.is-resizing .desktop-workbench-layout__sidebar {
+  transition: none;
+}
+
 .desktop-workbench-layout.is-resizing,
 .desktop-workbench-layout.is-resizing * {
   cursor: col-resize !important;
