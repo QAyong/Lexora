@@ -14,13 +14,14 @@ function createNavigation(activeId = 'lexora.tasks'): DesktopNavigationEntry[] {
   ]
 }
 
-function mountFooter(options: { activeId?: string, notificationUnseenCount?: number } = {}) {
+function mountFooter(options: { activeId?: string, appVersion?: string | null, notificationUnseenCount?: number } = {}) {
   const onNavigate = vi.fn()
   const onRefreshNotifications = vi.fn()
   const root = document.createElement('div')
   const app = createApp({
     render() {
       return h(DesktopSidebarFooter, {
+        appVersion: 'appVersion' in options ? options.appVersion : '0.9.2',
         language: 'zh-CN',
         navigation: createNavigation(options.activeId),
         notificationItems: [],
@@ -84,6 +85,28 @@ describe('desktopSidebarFooter', () => {
     await nextTick()
 
     expect(root.querySelector('.n-badge-sup')).toBeNull()
+
+    app.unmount()
+  })
+
+  it('renders the app version after the entries, aligned to the sidebar edge', async () => {
+    const { app, root } = mountFooter({ appVersion: '0.9.2' })
+    await nextTick()
+
+    const footer = root.querySelector('.desktop-sidebar-footer')
+    const version = root.querySelector('.desktop-sidebar-footer__version')
+    expect(version?.textContent?.trim()).toBe('v0.9.2')
+    expect(version?.getAttribute('title')).toBe('Lexora Buddy v0.9.2')
+    expect(footer?.lastElementChild).toBe(version)
+
+    app.unmount()
+  })
+
+  it('omits the version label when no version is available', async () => {
+    const { app, root } = mountFooter({ appVersion: null })
+    await nextTick()
+
+    expect(root.querySelector('.desktop-sidebar-footer__version')).toBeNull()
 
     app.unmount()
   })
