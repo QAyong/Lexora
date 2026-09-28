@@ -50,22 +50,17 @@ const pinLabel = computed(() => props.pinMode === 'pin'
   : t('desktop.tasks.unpin'))
 const menuOptions = computed<DropdownOption[]>(() => [
   {
-    icon: () => h(DesktopIcon, { name: 'navigationTask', size: 14 }),
-    key: 'new-task',
-    label: t('desktop.tasks.newTask'),
-  },
-  {
     icon: () => h(DesktopIcon, { component: FolderOpen20Regular, size: 14 }),
     key: 'open-directory',
     label: t('desktop.tasks.openSpaceWorkingDirectory'),
     show: Boolean(props.space.primaryDirectory),
   },
-  { key: 'task-management-divider', type: 'divider' },
   {
     icon: () => h(DesktopIcon, { name: props.pinMode === 'pin' ? 'windowPin' : 'pinOff', size: 14 }),
     key: 'pin',
     label: pinLabel.value,
   },
+  { key: 'task-management-divider', type: 'divider' },
   {
     icon: () => h(DesktopIcon, { component: SkillIcon, size: 14 }),
     key: 'skills',
