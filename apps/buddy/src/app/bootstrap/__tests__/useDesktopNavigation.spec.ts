@@ -79,15 +79,37 @@ describe('desktop navigation intent', () => {
     expect(f.navigation.notificationTarget.value).toEqual({ conversationId: 'b', messageId: 'message-b' })
   })
 
-  it('keeps only the latest target queued during initialization', async () => {
+  it('keeps only the latest target queued during initialization and activates its branch', async () => {
     const ready = deferred<void>()
     const f = await fixture(ready.promise)
     const a = f.navigation.openTarget({ conversationId: 'a', runId: 'a' })
     const b = f.navigation.openTarget({ conversationId: 'b', runId: 'b' })
+    await nextTick()
+    expect(f.openTask).not.toHaveBeenCalled()
     ready.resolve()
     await Promise.all([a, b])
+    expect(f.openTask).toHaveBeenCalledTimes(1)
+    expect(f.openTask).toHaveBeenCalledWith('b', expect.any(AbortSignal))
     expect(f.activeTaskId.value).toBe('b')
+    expect(f.getRun).toHaveBeenCalledTimes(1)
+    expect(f.getRun).toHaveBeenCalledWith('b')
+    expect(f.activateRunBranch).toHaveBeenCalledTimes(1)
+    expect(f.activateRunBranch).toHaveBeenCalledWith(expect.objectContaining({ branchId: 'branch-b' }))
     expect(f.navigation.notificationTarget.value).toEqual({ conversationId: 'b', messageId: 'message-b' })
+  })
+
+  it('waits for the target conversation to become active before looking up and activating its run', async () => {
+    const ready = deferred<void>()
+    const f = await fixture(ready.promise)
+    const opening = f.navigation.openTarget({ conversationId: 'run', runId: 'run' })
+    await nextTick()
+    expect(f.getRun).not.toHaveBeenCalled()
+    ready.resolve()
+    await opening
+    expect(f.activeTaskId.value).toBe('run')
+    expect(f.getRun).toHaveBeenCalledWith('run')
+    expect(f.activateRunBranch).toHaveBeenCalledWith(expect.objectContaining({ branchId: 'branch-run' }))
+    expect(f.navigation.notificationTarget.value).toEqual({ conversationId: 'run', messageId: 'message-run' })
   })
 
   it.each(['route', 'task', 'dispose'])('cancels a queued target after a newer %s operation', async (operation) => {
