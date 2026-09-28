@@ -1,17 +1,12 @@
 <script setup lang="ts">
 defineProps<{
   label: string
-  visible: boolean
 }>()
 </script>
 
 <template>
   <div class="desktop-workspace-sidebar-identity">
-    <Transition name="desktop-workspace-sidebar-identity">
-      <div v-if="visible" class="desktop-workspace-sidebar-identity__content">
-        <strong class="desktop-workspace-sidebar-identity__label">{{ label }}</strong>
-      </div>
-    </Transition>
+    <strong class="desktop-workspace-sidebar-identity__label">{{ label }}</strong>
   </div>
 </template>
 
@@ -23,59 +18,12 @@ defineProps<{
   align-items: center;
 }
 
-.desktop-workspace-sidebar-identity__content {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  color: var(--buddy-nav-foreground);
-  transition:
-    opacity 220ms ease-out,
-    transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: 70ms;
-}
-
 .desktop-workspace-sidebar-identity__label {
   overflow: hidden;
+  color: var(--buddy-nav-foreground);
   font-size: var(--buddy-sidebar-header-font-size);
   font-weight: var(--buddy-sidebar-header-font-weight);
   text-overflow: ellipsis;
-  transition:
-    opacity 180ms ease-out,
-    transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: 150ms;
   white-space: nowrap;
-}
-
-.desktop-workspace-sidebar-identity-enter-active {
-  will-change: opacity, transform;
-}
-
-.desktop-workspace-sidebar-identity-enter-from {
-  opacity: 0;
-  transform: translateX(-2rem);
-}
-
-.desktop-workspace-sidebar-identity-enter-from .desktop-workspace-sidebar-identity__label {
-  opacity: 0;
-  transform: translateX(-0.625rem);
-}
-
-.desktop-workspace-sidebar-identity-leave-active {
-  transition-delay: 0ms;
-  transition-duration: 100ms, 140ms;
-  transition-timing-function: ease-in, cubic-bezier(0.4, 0, 1, 1);
-  will-change: opacity, transform;
-}
-
-.desktop-workspace-sidebar-identity-leave-to {
-  opacity: 0;
-  transform: translateX(-0.5rem);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .desktop-workspace-sidebar-identity__content,
-  .desktop-workspace-sidebar-identity__label {
-    transition: none;
-  }
 }
 </style>

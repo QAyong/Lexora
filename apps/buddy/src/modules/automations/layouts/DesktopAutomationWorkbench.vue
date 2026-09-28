@@ -12,6 +12,7 @@ import { useRoute } from 'vue-router'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import { desktopRouteLocations } from '@/shared/navigation/desktopRoutes'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
+import DesktopBackToTasksButton from '@/shared/ui/navigation/DesktopBackToTasksButton.vue'
 
 const props = defineProps<{
   automations: AutomationCapability
@@ -85,11 +86,14 @@ async function refresh(): Promise<void> {
         <slot />
       </div>
     </NScrollbar>
+
+    <DesktopBackToTasksButton floating :language="language" />
   </section>
 </template>
 
 <style scoped lang="scss">
 .desktop-automation-workbench {
+  position: relative;
   display: flex;
   width: 100%;
   min-width: 0;

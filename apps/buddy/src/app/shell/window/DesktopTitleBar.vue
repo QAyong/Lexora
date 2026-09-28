@@ -22,7 +22,6 @@ import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 
 const props = defineProps<{
   appInfo: DesktopAppInfo | null
-  appSidebarCollapsed: boolean
   contextAvailable: boolean
   contextOpen: boolean
   contextIsChat: boolean
@@ -30,11 +29,12 @@ const props = defineProps<{
   contextSwapped: boolean
   language: BuddyLocale
   shortcutBindings: Readonly<Record<string, readonly string[]>>
+  sidebarCollapsed: boolean
 }>()
 const emit = defineEmits<{
-  toggleAppSidebar: []
   toggleContext: []
   toggleContextPosition: []
+  toggleSidebar: []
 }>()
 
 const desktopApi = requireDesktopApi()
@@ -174,12 +174,12 @@ function applyWindowState(state: DesktopWindowState) {
   <header class="desktop-title-bar" @dblclick="toggleMaximize">
     <div class="desktop-title-bar__safe-area">
       <DesktopWindowMenuBar
-        :app-sidebar-collapsed="appSidebarCollapsed"
         :language="language"
         :shortcut-bindings="shortcutBindings"
         :platform="platform"
+        :sidebar-collapsed="sidebarCollapsed"
         @command="executeDesktopCommand"
-        @toggle-app-sidebar="emit('toggleAppSidebar')"
+        @toggle-sidebar="emit('toggleSidebar')"
       />
 
       <div

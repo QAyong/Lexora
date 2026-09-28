@@ -1,4 +1,4 @@
-import type { DesktopAppInfo, DesktopContextPanelMode, DesktopUserProfileConfig } from '@buddy-electron/shared/desktopApi'
+import type { DesktopAppInfo, DesktopContextPanelMode } from '@buddy-electron/shared/desktopApi'
 import type { Ref } from 'vue'
 import type { useDesktopLifecycle } from '../bootstrap/useDesktopLifecycle'
 import type { DesktopNavigation } from '../bootstrap/useDesktopNavigation'
@@ -15,12 +15,10 @@ export interface DesktopShellBindings {
   lifecycle: ReturnType<typeof useDesktopLifecycle>
   navigation: Pick<DesktopNavigation, 'navigate' | 'openNotification'>
   notifications: Pick<NotificationCenterStore, 'items' | 'isLoading' | 'unseenCount' | 'load' | 'markAllSeen'>
-  profileConfig: Readonly<Ref<DesktopUserProfileConfig>>
   resourceContext: TaskChatWorkspace['context']
   resources: TaskResourcePanel
   shortcuts: ShortcutSettings
   taskIndex: TaskIndex
-  toggleAppSidebar: () => void
-  updateProfile: (profile: Partial<DesktopUserProfileConfig>) => Promise<boolean>
+  toggleSidebar: () => void
   workbench: import('../workbench/desktopWorkbenchContext').DesktopWorkbench
 }

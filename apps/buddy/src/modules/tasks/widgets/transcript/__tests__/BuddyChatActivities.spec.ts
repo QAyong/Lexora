@@ -443,7 +443,7 @@ function mountTurn(nodes: ChatAgentTurnNode[], status: ChatAgentTurn['status'] =
       useProvideDesktopUi({
         language: shallowRef('zh-CN'),
         isDark: shallowRef(false),
-        appSidebarCollapsed: shallowRef(false),
+        sidebarCollapsed: shallowRef(false),
         chat: shallowRef({ outlinePosition: 'top-right', permissionMode: 'policy_approval', welcome: 'random' }),
       })
       useProvideChatContent({ canPreviewFile: () => false, previewFile: () => {}, writeClipboardText: async () => {} })

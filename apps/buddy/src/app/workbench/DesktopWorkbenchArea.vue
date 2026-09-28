@@ -11,6 +11,7 @@ import WorkbenchMountPoint from '@/workbench/browser/mounts/WorkbenchMountPoint.
 import { useWorkbench } from '@/workbench/browser/workbenchContext'
 import WorkbenchLayoutNode from '@/workbench/browser/WorkbenchLayoutNode.vue'
 import WorkbenchSurface from '@/workbench/browser/WorkbenchSurface.vue'
+import DesktopSidebarFooter from '../shell/DesktopSidebarFooter.vue'
 import DesktopDirectoryFileSurface from './DesktopDirectoryFileSurface.vue'
 
 const props = defineProps<{ bindings: DesktopShellBindings, tasksVisible: boolean, contextOnLeft: boolean, chatPaneHidden: boolean }>()
@@ -46,13 +47,32 @@ function focusContext() {
   const tab = props.bindings.resources.activeTab.value
   props.bindings.workbench.controller.focusContext(tab?.kind === 'view' ? tab.viewId : selectedFile.value?.id ?? null)
 }
+function navigate(id: string) {
+  const entry = props.bindings.pages.navigation.value.find(entry => entry.id === id)
+  if (entry)
+    void props.bindings.navigation.navigate(entry.location)
+}
 </script>
 
 <template>
   <WorkbenchLayout v-model:sidebar-collapsed="collapsed" v-model:sidebar-width="width" :language="language" :context-visible="(tasksVisible || bindings.contextPanelGlobal.value) && bindings.resources.isOpen.value" :context-on-left="tasksVisible && contextOnLeft" :workspace-visible="!chatPaneHidden" :sidebar-collapsible="tasksVisible" :sidebar-resizable="tasksVisible">
     <template v-if="tasksVisible" #sidebar>
       <WorkbenchMountPoint target="workbench.sidebar">
-        <DesktopTaskIndexView :pending-task-ids="pendingTaskIds" :index="bindings.taskIndex" :active-task-id="bindings.workbench.activeTask.value?.session.activeTaskId.value ?? null" @open-task="bindings.workbench.openTask" @new-task="bindings.workbench.newTask" />
+        <DesktopTaskIndexView :pending-task-ids="pendingTaskIds" :index="bindings.taskIndex" :active-task-id="bindings.workbench.activeTask.value?.session.activeTaskId.value ?? null" @open-task="bindings.workbench.openTask" @new-task="bindings.workbench.newTask">
+          <template #footer>
+            <DesktopSidebarFooter
+              :language="language"
+              :navigation="bindings.pages.navigation.value"
+              :notification-items="bindings.notifications.items.value"
+              :notification-loading="bindings.notifications.isLoading.value"
+              :notification-unseen-count="bindings.notifications.unseenCount.value"
+              @mark-all-notifications-seen="bindings.notifications.markAllSeen"
+              @navigate="navigate"
+              @open-notification="bindings.navigation.openNotification"
+              @refresh-notifications="bindings.notifications.load"
+            />
+          </template>
+        </DesktopTaskIndexView>
       </WorkbenchMountPoint>
     </template>
     <div v-show="tasksVisible" class="desktop-workbench-area__tasks">

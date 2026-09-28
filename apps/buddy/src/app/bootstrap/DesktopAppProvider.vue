@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DesktopUserProfileConfig } from '@buddy-electron/shared/desktopApi'
 import type { DesktopShellBindings } from '../shell/desktopShellBindings'
 import type { DesktopBrowserGuestSurfaceHost } from '@/platform/browser/browserGuestSurface'
 import { DEFAULT_DESKTOP_CHAT_PREFERENCES } from '@buddy-electron/shared/desktopApi'
@@ -156,7 +157,7 @@ watch(stores.modelProviders.modelProviderError, (error) => {
   message.error(error)
   stores.modelProviders.clearModelProviderError()
 })
-const shell = useDesktopShellState(stores.applicationSettings, api)
+const shell = useDesktopShellState(api)
 const lifecycle = useDesktopLifecycle({
   api,
   appState,
@@ -200,7 +201,14 @@ onScopeDispose(api.app.onOpenTarget(navigation.openTarget))
 const browserGuestHost = useTemplateRef<DesktopBrowserGuestSurfaceHost>('browserGuestHost')
 const browserGuests = useBrowserGuestHost(browserGuestHost)
 onScopeDispose(workbench.controller.subscribe(() => void nextTick(() => browserGuests.layout?.())))
-const toggleAppSidebar = () => void shell.setAppSidebarCollapsed(!shell.appSidebarCollapsed.value)
+const toggleSidebar = () => void taskIndex.index.sidebar.setCollapsed(!taskIndex.index.sidebar.collapsed.value)
+const profileConfig = computed(() => stores.applicationSettings.config.value?.desktop.profile ?? { avatar: '', deviceName: '', userName: '' })
+async function updateProfile(patch: Partial<DesktopUserProfileConfig>) {
+  const saved = await stores.applicationSettings.updateSettings({ desktop: { profile: patch } })
+  if (saved)
+    message.success(translateBuddy(stores.applicationSettings.language.value, 'desktop.account.saveSuccess'))
+  return saved
+}
 
 const shellBindings: DesktopShellBindings = {
   pages,
@@ -220,21 +228,14 @@ const shellBindings: DesktopShellBindings = {
   appInfo: shell.appInfo,
   navigation,
   notifications: stores.notifications,
-  profileConfig: computed(() => stores.applicationSettings.config.value?.desktop.profile ?? { avatar: '', deviceName: '', userName: '' }),
   taskIndex: taskIndex.index,
-  toggleAppSidebar,
-  updateProfile: async (patch) => {
-    const saved = await stores.applicationSettings.updateSettings({ desktop: { profile: patch } })
-    if (saved)
-      message.success(translateBuddy(stores.applicationSettings.language.value, 'desktop.account.saveSuccess'))
-    return saved
-  },
+  toggleSidebar,
 }
 useProvideDesktopUi({
   isDark: toRef(() => props.isDark),
   chat: computed(() => stores.applicationSettings.config.value?.desktop.chat ?? DEFAULT_DESKTOP_CHAT_PREFERENCES),
   language: stores.applicationSettings.language,
-  appSidebarCollapsed: shell.appSidebarCollapsed,
+  sidebarCollapsed: taskIndex.index.sidebar.collapsed,
 })
 useProvideTaskEnvironment({
   resources,
@@ -250,6 +251,7 @@ useProvideSettingsContext({
   appInfo: shell.appInfo,
   dataSettings: capabilities.dataSettings,
   platformCapabilities: shell.platformCapabilities,
+  profile: { config: profileConfig, update: updateProfile },
   providerSettings: stores.modelProviders,
   ready,
   webSettings: capabilities.webSettings,

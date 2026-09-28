@@ -31,7 +31,6 @@ const props = defineProps<{
   activeConversationId: string | null
   pendingConversationIds?: readonly string[]
   marks: TaskMarks
-  appSidebarCollapsed: boolean
   language: BuddyLocale
   pinnedItems: ReadonlyArray<DesktopTaskPinnedItem>
   sidebar: TaskIndex['sidebar']
@@ -50,6 +49,7 @@ const emit = defineEmits<{
   renameTask: [conversationId: string, title: string]
   updatePinnedItems: [items: DesktopTaskPinnedItem[]]
 }>()
+defineSlots<{ footer?: () => unknown }>()
 
 const { t } = useBuddyI18n(() => props.language)
 const marksOpen = shallowRef(false)
@@ -135,11 +135,10 @@ function openSearchSpace(spaceId: string) {
 </script>
 
 <template>
-  <aside class="desktop-task-sidebar">
+  <aside id="desktop-task-sidebar" class="desktop-task-sidebar">
     <header class="desktop-task-sidebar__header">
       <DesktopWorkspaceSidebarIdentity
         :label="t('desktop.navigation.tasks')"
-        :visible="appSidebarCollapsed"
       />
       <NTooltip>
         <template #trigger>
@@ -411,6 +410,8 @@ function openSearchSpace(spaceId: string) {
         </NButton>
       </template>
     </NModal>
+
+    <slot name="footer" />
   </aside>
 </template>
 

@@ -21,14 +21,14 @@ import { BRAND_ASSET_URLS } from '@/shared/branding/brandAssets'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 
 const props = defineProps<{
-  appSidebarCollapsed: boolean
   language: BuddyLocale
   platform: DesktopPlatform
   shortcutBindings: Readonly<Record<string, readonly string[]>>
+  sidebarCollapsed: boolean
 }>()
 const emit = defineEmits<{
   command: [commandId: DesktopCommandId]
-  toggleAppSidebar: []
+  toggleSidebar: []
 }>()
 
 const activeMenu = shallowRef<DesktopCommandMenu | null>(null)
@@ -114,10 +114,10 @@ const nodeProps: DropdownNodeProps = () => ({
     <button
       type="button"
       class="desktop-window-menu__sidebar-trigger"
-      :aria-label="t(appSidebarCollapsed ? 'desktop.layout.expandAppSidebar' : 'desktop.layout.collapseAppSidebar')"
-      :aria-expanded="!appSidebarCollapsed"
-      aria-controls="desktop-app-sidebar"
-      @click="emit('toggleAppSidebar')"
+      :aria-label="t(sidebarCollapsed ? 'desktop.layout.expandSidebar' : 'desktop.layout.collapseSidebar')"
+      :aria-expanded="!sidebarCollapsed"
+      aria-controls="desktop-task-sidebar"
+      @click="emit('toggleSidebar')"
     >
       <DesktopIcon :component="PanelLeft20Regular" />
     </button>

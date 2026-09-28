@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NScrollbar } from 'naive-ui'
 import { computed } from 'vue'
+import DesktopBackToTasksButton from '@/shared/ui/navigation/DesktopBackToTasksButton.vue'
 import { extensionLabels } from '../extensionLabels'
 
 const props = defineProps<{ language: string }>()
@@ -32,11 +33,14 @@ const labels = computed(() => extensionLabels(props.language))
         <slot />
       </div>
     </NScrollbar>
+
+    <DesktopBackToTasksButton floating :language="language" />
   </section>
 </template>
 
 <style scoped lang="scss">
 .desktop-extension-workbench {
+  position: relative;
   display: flex;
   width: 100%;
   min-width: 0;

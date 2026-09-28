@@ -4,6 +4,7 @@ import { NButton, NEmpty } from 'naive-ui'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { desktopRouteLocations } from '@/shared/navigation/desktopRoutes'
+import DesktopBackToTasksButton from '@/shared/ui/navigation/DesktopBackToTasksButton.vue'
 import { useExtensionContext } from '../extensionContext'
 import DesktopExtensionSurface from './DesktopExtensionSurface.vue'
 
@@ -31,11 +32,13 @@ const input = computed<ExtensionViewInput | null>(() => {
         </NButton>
       </template>
     </NEmpty>
+
+    <DesktopBackToTasksButton floating :language="language" />
   </section>
 </template>
 
 <style scoped>
-.extension-page { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; }
+.extension-page { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; }
 .extension-page__header { display: flex; align-items: center; min-height: var(--buddy-region-header-height); flex: none; padding: 0 20px; border-bottom: 1px solid var(--buddy-border-subtle); font-size: 14px; color: var(--buddy-text-strong); }
 .extension-page__empty { margin: auto; }
 </style>

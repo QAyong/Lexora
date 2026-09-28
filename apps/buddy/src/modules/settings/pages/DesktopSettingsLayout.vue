@@ -6,14 +6,13 @@ import { useDesktopUi } from '@/shared/ui/desktopUiContext'
 import WorkbenchLayout from '@/workbench/browser/layout/WorkbenchLayout.vue'
 
 const { platformCapabilities } = useSettingsContext()
-const { language, appSidebarCollapsed } = useDesktopUi()
+const { language } = useDesktopUi()
 </script>
 
 <template>
   <WorkbenchLayout :language="language">
     <template #sidebar>
       <DesktopSettingsSidebar
-        :app-sidebar-collapsed="appSidebarCollapsed"
         :language="language"
         :capabilities="platformCapabilities"
       />

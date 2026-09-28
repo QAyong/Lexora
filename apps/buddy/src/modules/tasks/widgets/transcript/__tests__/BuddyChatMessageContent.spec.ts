@@ -84,7 +84,7 @@ describe('buddyChatMessageContent', () => {
         useProvideDesktopUi({
           language: shallowRef('zh-CN'),
           isDark: shallowRef(false),
-          appSidebarCollapsed: shallowRef(false),
+          sidebarCollapsed: shallowRef(false),
           chat: shallowRef({ outlinePosition: 'top-right', permissionMode: 'policy_approval', welcome: 'random' }),
         })
         useProvideChatContent({
@@ -223,7 +223,7 @@ function renderContent(message: LocalMessage, isDark = false) {
       useProvideDesktopUi({
         language: shallowRef('zh-CN'),
         isDark: shallowRef(isDark),
-        appSidebarCollapsed: shallowRef(false),
+        sidebarCollapsed: shallowRef(false),
         chat: shallowRef({ outlinePosition: 'top-right', permissionMode: 'policy_approval', welcome: 'random' }),
       })
       return () => h(BuddyChatMessageContent, {
