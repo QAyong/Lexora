@@ -7,7 +7,7 @@ import type { LocalSpace } from '@buddy-shared/spaces/spaceApi'
 import type { TaskIndex, TaskMarks } from '../../contracts'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import type { TaskSpaceInput } from '@/modules/tasks/state/task-index/typing'
-import { Add20Regular, Tag20Regular } from '@vicons/fluent'
+import { Tag20Regular } from '@vicons/fluent'
 import { NAlert, NButton, NInput, NModal, NTooltip } from 'naive-ui'
 import { shallowRef, toRef } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
@@ -142,28 +142,20 @@ function openSearchSpace(spaceId: string) {
       />
       <NTooltip>
         <template #trigger>
-          <button class="desktop-task-sidebar__search-trigger" type="button" :aria-label="t('desktop.search.title')" @click="searchOpen = true">
-            <DesktopIcon name="toolSearch" :size="16" />
-          </button>
-        </template>
-        {{ t('desktop.search.title') }}
-      </NTooltip>
-      <NTooltip>
-        <template #trigger>
           <button class="desktop-task-sidebar__marks-trigger" type="button" :aria-label="t('desktop.marks.manage')" @click="marksOpen = true">
             <DesktopIcon :component="Tag20Regular" :size="16" />
           </button>
         </template>
         {{ t('desktop.marks.manage') }}
       </NTooltip>
-      <button
-        class="desktop-task-sidebar__new-trigger"
-        type="button"
-        :aria-label="t('desktop.tasks.newTask')"
-        @click="emit('newTask', null)"
-      >
-        <DesktopIcon :component="Add20Regular" :size="16" />
-      </button>
+      <NTooltip>
+        <template #trigger>
+          <button class="desktop-task-sidebar__search-trigger" type="button" :aria-label="t('desktop.search.title')" @click="searchOpen = true">
+            <DesktopIcon name="toolSearch" :size="16" />
+          </button>
+        </template>
+        {{ t('desktop.search.title') }}
+      </NTooltip>
     </header>
 
     <NAlert v-if="marks.error.value && !marksOpen" type="error" :show-icon="false">
@@ -285,6 +277,8 @@ function openSearchSpace(spaceId: string) {
           :priority="DESKTOP_TASK_SIDEBAR_SECTION_PRIORITIES.tasks"
           :scroll-index="scrollAnchors.tasks"
           section="tasks"
+          show-add
+          @add="emit('newTask', null)"
           @scroll="index => recordScrollAnchor('tasks', index)"
           @update:expanded="value => setSectionExpanded('tasks', value)"
         >
@@ -438,7 +432,6 @@ function openSearchSpace(spaceId: string) {
   padding: 0 0.5rem 0 0.75rem;
 }
 
-.desktop-task-sidebar__new-trigger,
 .desktop-task-sidebar__search-trigger,
 .desktop-task-sidebar__marks-trigger {
   display: grid;
