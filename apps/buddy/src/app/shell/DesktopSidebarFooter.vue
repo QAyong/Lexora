@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { LocalNotification } from '@buddy-shared/notifications/notificationApi'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
+import type { DesktopNotification } from '@/modules/notifications/contracts'
 import type { DesktopNavigationEntry } from '@/shared/navigation/desktopPages'
 import { Alert20Regular } from '@vicons/fluent'
 import { NBadge, NPopover, NTooltip } from 'naive-ui'
@@ -13,14 +13,14 @@ import DesktopPluginIcon from '@/shared/ui/icon/DesktopPluginIcon.vue'
 const props = defineProps<{
   language: BuddyLocale
   navigation: readonly DesktopNavigationEntry[]
-  notificationItems: ReadonlyArray<LocalNotification>
+  notificationItems: ReadonlyArray<DesktopNotification>
   notificationLoading: boolean
   notificationUnseenCount: number
 }>()
 const emit = defineEmits<{
   markAllNotificationsSeen: []
   navigate: [id: string]
-  openNotification: [notification: LocalNotification]
+  openNotification: [notification: DesktopNotification]
   refreshNotifications: []
 }>()
 
@@ -38,7 +38,7 @@ function updateNotificationVisibility(show: boolean) {
     emit('refreshNotifications')
 }
 
-function openNotification(notification: LocalNotification) {
+function openNotification(notification: DesktopNotification) {
   showNotifications.value = false
   emit('openNotification', notification)
 }

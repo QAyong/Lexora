@@ -13,6 +13,8 @@ import { DesktopExtensionControl, DesktopExtensionFrameHost, DesktopExtensionMen
 import { resolveUserProfile, usePluginSettings, useProvideSettingsContext, useSettingsRegistry } from '@/modules/settings'
 import { useProvideSkillsContext } from '@/modules/skills'
 import { useProvideTaskEnvironment, useTaskIndex, useTaskResourcePanel } from '@/modules/tasks'
+import { useProvideDesktopUpdates } from '@/modules/updates'
+import { DesktopUpdateHost } from '@/modules/updates/ui'
 import DesktopBrowserGuestHost from '@/platform/browser/DesktopBrowserGuestHost.vue'
 import { useBrowserGuestHost } from '@/platform/browser/useBrowserGuestHost'
 import { requireDesktopApi } from '@/platform/desktop/desktopApi'
@@ -48,6 +50,7 @@ const router = useRouter()
 const message = useMessage()
 const appState = useDesktopAppState({ api })
 const { stores } = appState
+useProvideDesktopUpdates(stores.updates)
 const taskIndex = useTaskIndex({
   api: api.localChat,
   applicationSettings: stores.applicationSettings,
@@ -188,6 +191,7 @@ const navigation = useDesktopNavigation({
     startTask: spaceId => workbench.newTask(spaceId),
   },
   notifications: stores.notifications,
+  openUpdate: stores.updates.openDetails,
   getRun: api.localChat.runs.get,
   activateRunBranch: async (run) => {
     const task = selectedTask.value
@@ -319,5 +323,6 @@ watch(() => stores.applicationSettings.config.value?.desktop.theme, (theme) => {
   </WorkbenchSurfaceHost>
   <DesktopExtensionOverlays />
   <DesktopExtensionReviewHost />
+  <DesktopUpdateHost :language="stores.applicationSettings.language.value" />
   <slot :shell="shellBindings" />
 </template>
