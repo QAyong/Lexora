@@ -1,6 +1,5 @@
 import type { BuddyChatCommandName } from '@buddy-shared/conversation/buddyChatCommands'
-import type { BuddyMessageQuote } from '@buddy-shared/conversation/buddyUserContent'
-import type { BuddySessionReference } from '@buddy-shared/conversation/buddyUserContent'
+import type { BuddyMessageQuote, BuddySessionReference } from '@buddy-shared/conversation/buddyUserContent'
 import type { BuddyComposerSource } from '@buddy-shared/conversation/composerResource'
 import type { JSONContent } from '@tiptap/core'
 import type { ComposerResourceCard, UseChatComposerOptions } from './typing'

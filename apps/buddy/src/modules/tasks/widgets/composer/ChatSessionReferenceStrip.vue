@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { BuddySessionReference } from '@buddy-shared/conversation/buddyUserContent'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
-import { Dismiss16Regular, Chat20Regular } from '@vicons/fluent'
+import { Chat20Regular, Dismiss16Regular } from '@vicons/fluent'
 import { NButton, NTooltip } from 'naive-ui'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
@@ -15,8 +15,16 @@ const { t } = useBuddyI18n(() => props.language)
   <div v-if="references.length" class="chat-session-reference-strip" data-session-reference-exclude>
     <div v-for="reference in references" :key="reference.id" class="chat-session-reference" :title="reference.title">
       <DesktopIcon :component="Chat20Regular" class="chat-session-reference__icon" />
-      <NTooltip :delay="300"><template #trigger><span class="chat-session-reference__title">{{ reference.title }}</span></template>{{ reference.title }}</NTooltip>
-      <NButton v-if="removable" class="buddy-icon-button chat-session-reference__remove" quaternary size="tiny" :disabled="disabled" :aria-label="t('desktop.chat.removeSessionReference')" @click="emit('remove', reference.id)"><template #icon><DesktopIcon :component="Dismiss16Regular" /></template></NButton>
+      <NTooltip :delay="300">
+        <template #trigger>
+          <span class="chat-session-reference__title">{{ reference.title }}</span>
+        </template>{{ reference.title }}
+      </NTooltip>
+      <NButton v-if="removable" class="buddy-icon-button chat-session-reference__remove" quaternary size="tiny" :disabled="disabled" :aria-label="t('desktop.chat.removeSessionReference')" @click="emit('remove', reference.id)">
+        <template #icon>
+          <DesktopIcon :component="Dismiss16Regular" />
+        </template>
+      </NButton>
     </div>
   </div>
 </template>

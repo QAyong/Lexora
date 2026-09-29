@@ -1,10 +1,10 @@
 import type { ToolCallEvent } from '@earendil-works/pi-coding-agent'
-import type { BuddyCapability } from './BuddyCapability'
 import type { ConversationRepository } from '../../storage/conversationRepository'
 import type { RunInputRepository } from '../../storage/runInputRepository'
+import type { BuddyCapability } from './BuddyCapability'
 import { defineTool } from '@earendil-works/pi-coding-agent'
 import { Type } from 'typebox'
-import { readBuddyUserMessageContent, buddyUserContentToText } from '../../../../shared/conversation/buddyUserContent'
+import { buddyUserContentToText, readBuddyUserMessageContent } from '../../../../shared/conversation/buddyUserContent'
 
 export const SESSION_ASK_TOOL = 'lexora_session_ask'
 const parameters = Type.Object({ question: Type.String({ minLength: 1, maxLength: 4000 }) }, { additionalProperties: false })
@@ -71,7 +71,7 @@ export function createSessionAskCapability(options: {
   return {
     classify: (event: ToolCallEvent) => event.toolName === SESSION_ASK_TOOL ? { access: 'read', paths: [] } : null,
     disclosure: { group: 'system', keywords: 'Search or retrieve details from an explicitly referenced historical conversation or session.', toolNames: [SESSION_ASK_TOOL] },
-    extension: { name: 'lexora-session-ask', factory: pi => { pi.registerTool(tool) } },
+    extension: { name: 'lexora-session-ask', factory: (pi) => { pi.registerTool(tool) } },
   }
 }
 

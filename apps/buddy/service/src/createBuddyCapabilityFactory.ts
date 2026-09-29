@@ -12,9 +12,10 @@ import type { ImageGenerationServiceOptions } from './images/ImageGenerationServ
 import type { ImageTransformService } from './images/ImageTransformService'
 import type { PetActionService } from './pet/PetActionService'
 import type { PluginAuthoringService } from './plugins/PluginAuthoringService'
-import type { WebCapabilityService } from './web/WebCapabilityService'
 import type { ConversationRepository } from './storage/conversationRepository'
 import type { RunInputRepository } from './storage/runInputRepository'
+import type { WebCapabilityService } from './web/WebCapabilityService'
+import { createSessionAskCapability } from './agent/extensions/sessionAskExtension'
 import { createOutputPresentationCapability } from './artifacts/outputPresentationExtension'
 import { createAutomationCapability } from './automations/automationExtension'
 import { createBrowserCapability } from './browser/browserExtension'
@@ -29,7 +30,6 @@ import { createPluginAuthoringCapability } from './plugins/pluginAuthoringCapabi
 import { createSystemHost } from './system/createSystemHost'
 import { createSystemCapability } from './system/systemExtension'
 import { createWebCapability } from './web/webExtension'
-import { createSessionAskCapability } from './agent/extensions/sessionAskExtension'
 
 export interface BuddyCapabilityServices {
   record?: ApplicationDiagnosticReporter

@@ -24,9 +24,9 @@ import WorkbenchMenu from '@/shared/ui/contributions/WorkbenchMenu.vue'
 import WorkbenchSlot from '@/shared/ui/contributions/WorkbenchSlot.vue'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 import ChatQuoteStrip from '../quotes/ChatQuoteStrip.vue'
-import ChatSessionReferenceStrip from './ChatSessionReferenceStrip.vue'
 import ChatComposerSourceMenu from './ChatComposerSourceMenu.vue'
 import ChatComposerSourcePicker from './ChatComposerSourcePicker.vue'
+import ChatSessionReferenceStrip from './ChatSessionReferenceStrip.vue'
 import ComposerResourceStrip from './ComposerResourceStrip.vue'
 
 const props = defineProps<DesktopChatComposerProps>()
