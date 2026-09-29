@@ -329,6 +329,7 @@ export default {
   'desktop.chat.processReasoning': '思考',
   'desktop.chat.processAwaitingApproval': '等待批准',
   'desktop.chat.processReasoningRunning': '正在思考',
+  'desktop.chat.processSummary': '查看执行过程',
   'desktop.chat.processToolCommand': '运行命令',
   'desktop.chat.processToolAutomation': '自动化',
   'desktop.chat.processToolAutomationCount': '{count} 个计划',

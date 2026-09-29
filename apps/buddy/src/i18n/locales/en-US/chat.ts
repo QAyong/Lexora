@@ -331,6 +331,7 @@ export default {
   'desktop.chat.processReasoning': 'Reasoning',
   'desktop.chat.processAwaitingApproval': 'Waiting for approval',
   'desktop.chat.processReasoningRunning': 'Thinking',
+  'desktop.chat.processSummary': 'View process',
   'desktop.chat.processToolCommand': 'Run command',
   'desktop.chat.processToolAutomation': 'Automation',
   'desktop.chat.processToolAutomationCount': '{count} plans',

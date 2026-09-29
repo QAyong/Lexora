@@ -10,6 +10,7 @@ import type { ChatReadingPositions } from '@/modules/tasks/ui'
 import type { DropPosition, ResourceRef, SplitDirection, WorkbenchView } from '@/workbench/common/workbench'
 import type { ViewCloseDecision } from '@/workbench/services/WorkbenchController'
 import { buddyUserContentToText, getBuddyUserContentResourceIds, hasBuddyUserContent } from '@buddy-shared/conversation/buddyUserContent'
+import { parseLocalChatPublicError } from '@buddy-shared/runtime/localChatError'
 import { isSkillAvailable } from '@buddy-shared/skills/skillApi'
 import { NButton, useDialog } from 'naive-ui'
 import { computed, h, onScopeDispose, shallowReactive, shallowRef } from 'vue'
@@ -295,6 +296,35 @@ export function useDesktopWorkbench(options: { api: LexoraDesktopApi, events: Ap
   async function closeContextFiles(tabId: string) {
     return (await controller.closeMany(contextViews([tabId]))).status === 'closed'
   }
+
+  async function discardUnavailableTaskViews(): Promise<void> {
+    const taskIds = new Set(Object.values(controller.layout.views)
+      .filter(view => view.resource.scheme === 'task')
+      .map(view => view.resource.id))
+    for (const id of taskIds) {
+      let unavailable = false
+      try {
+        const conversation = await api.localChat.conversations.get(id)
+        unavailable = !conversation || Boolean(conversation.deletedAt)
+      }
+      catch (error) {
+        if (error instanceof Error && parseLocalChatPublicError(error.message)?.code === 'VALIDATION_FAILED')
+          unavailable = true
+        else
+          throw error
+      }
+      if (!unavailable)
+        continue
+      deletedTasks.add(id)
+      options.resources().discardConversation(id)
+      const viewIds = Object.values(controller.layout.views)
+        .filter(view => view.resource.scheme === 'task' && view.resource.id === id)
+        .map(view => view.id)
+      if (viewIds.length)
+        await controller.closeMany(viewIds)
+    }
+  }
+
   function openFile(target: SpaceFileTarget, tabId?: string) {
     const key = JSON.stringify([tabId, target.directoryId, target.revision, target.path])
     const pending = openingFiles.get(key)
@@ -375,6 +405,7 @@ export function useDesktopWorkbench(options: { api: LexoraDesktopApi, events: Ap
     if (Array.isArray(legacy))
       legacy.forEach(resources.restoreTab)
     controller.removeAuxiliary('legacyResources')
+    await discardUnavailableTaskViews()
     if (!restored && !panes(controller.layout.root).some(pane => pane.view)) {
       const previous = await api.localChat.workspaceState.read()
       const id = previous?.value.activeConversationId
