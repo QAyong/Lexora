@@ -8,7 +8,7 @@ import type { DesktopCommandId } from '@buddy-electron/shared/desktopCommands'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import { DESKTOP_COMMAND_REGISTRY, getDesktopCommand } from '@buddy-electron/shared/desktopCommands'
 import { ArrowSwap20Regular, PanelRightContract20Regular, PanelRightExpand20Regular } from '@vicons/fluent'
-import { useMessage } from 'naive-ui'
+import { NTooltip, useMessage } from 'naive-ui'
 import { computed, onBeforeUnmount, onMounted, onScopeDispose, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import DesktopFeedbackDialog from '@/app/shell/window/DesktopFeedbackDialog.vue'
@@ -22,7 +22,6 @@ import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 
 const props = defineProps<{
   appInfo: DesktopAppInfo | null
-  appSidebarCollapsed: boolean
   contextAvailable: boolean
   contextOpen: boolean
   contextIsChat: boolean
@@ -30,11 +29,12 @@ const props = defineProps<{
   contextSwapped: boolean
   language: BuddyLocale
   shortcutBindings: Readonly<Record<string, readonly string[]>>
+  sidebarCollapsed: boolean
 }>()
 const emit = defineEmits<{
-  toggleAppSidebar: []
   toggleContext: []
   toggleContextPosition: []
+  toggleSidebar: []
 }>()
 
 const desktopApi = requireDesktopApi()
@@ -174,12 +174,12 @@ function applyWindowState(state: DesktopWindowState) {
   <header class="desktop-title-bar" @dblclick="toggleMaximize">
     <div class="desktop-title-bar__safe-area">
       <DesktopWindowMenuBar
-        :app-sidebar-collapsed="appSidebarCollapsed"
         :language="language"
         :shortcut-bindings="shortcutBindings"
         :platform="platform"
+        :sidebar-collapsed="sidebarCollapsed"
         @command="executeDesktopCommand"
-        @toggle-app-sidebar="emit('toggleAppSidebar')"
+        @toggle-sidebar="emit('toggleSidebar')"
       />
 
       <div
@@ -188,29 +188,37 @@ function applyWindowState(state: DesktopWindowState) {
         @mousedown.stop
         @pointerdown.stop
       >
-        <button
-          v-if="contextSwapAvailable"
-          :aria-label="t('desktop.context.swapPosition')"
-          :aria-pressed="contextSwapped"
-          class="desktop-title-bar__control"
-          data-testid="context-panel-position-toggle"
-          type="button"
-          @click="emit('toggleContextPosition')"
-        >
-          <DesktopIcon :component="ArrowSwap20Regular" />
-        </button>
-        <button
-          v-if="contextAvailable"
-          :aria-label="contextToggleLabel"
-          :aria-expanded="contextOpen"
-          class="desktop-title-bar__control"
-          :class="{ 'is-active': contextOpen }"
-          data-testid="context-panel-toggle"
-          type="button"
-          @click="emit('toggleContext')"
-        >
-          <DesktopIcon :component="contextOpen ? PanelRightContract20Regular : PanelRightExpand20Regular" />
-        </button>
+        <NTooltip v-if="contextSwapAvailable" placement="bottom">
+          <template #trigger>
+            <button
+              :aria-label="t('desktop.context.swapPosition')"
+              :aria-pressed="contextSwapped"
+              class="desktop-title-bar__control"
+              data-testid="context-panel-position-toggle"
+              type="button"
+              @click="emit('toggleContextPosition')"
+            >
+              <DesktopIcon :component="ArrowSwap20Regular" />
+            </button>
+          </template>
+          {{ t('desktop.context.swapPosition') }}
+        </NTooltip>
+        <NTooltip v-if="contextAvailable" placement="bottom">
+          <template #trigger>
+            <button
+              :aria-label="contextToggleLabel"
+              :aria-expanded="contextOpen"
+              class="desktop-title-bar__control"
+              :class="{ 'is-active': contextOpen }"
+              data-testid="context-panel-toggle"
+              type="button"
+              @click="emit('toggleContext')"
+            >
+              <DesktopIcon :component="contextOpen ? PanelRightContract20Regular : PanelRightExpand20Regular" />
+            </button>
+          </template>
+          {{ contextToggleLabel }}
+        </NTooltip>
         <button
           :aria-label="t('desktop.window.minimize')"
           class="desktop-title-bar__control"

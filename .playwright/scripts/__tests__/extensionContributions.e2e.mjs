@@ -5,7 +5,16 @@ import { writeContributionPlugin } from './extensionContributions.mjs'
 test('plugin-owned preferences activate contributions, yield native content and restore across restart', async ({ buddy }) => {
   const instance = await buddy.createInstance('plugin-contributions')
   let { app, page, diagnostics } = await instance.launch()
-  const navigate = async name => page.locator('.desktop-app-sidebar').getByRole('button', { name, exact: true }).click()
+  const backToTasks = async () => {
+    const back = page.locator('.desktop-back-to-tasks')
+    if (await back.count())
+      await back.click()
+  }
+  const openModule = async name => {
+    await backToTasks()
+    await page.locator('.desktop-sidebar-footer').getByRole('button', { name, exact: true }).click()
+  }
+  const openPluginPage = async id => page.locator(`[data-extension-id="${id}"]`).getByRole('button', { name: '打开', exact: true }).click()
   const nativeFooter = () => page.locator('.desktop-chat-composer__disclaimer')
   const pluginFrame = async (name, file) => {
     let result
@@ -24,7 +33,7 @@ test('plugin-owned preferences activate contributions, yield native content and 
   async function install(name) {
     const directory = path.join(instance.home, 'fixtures', name)
     const id = await writeContributionPlugin(directory, name)
-    await navigate('插件')
+    await openModule('插件')
     await app.evaluate(({ dialog }, directory) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [directory] })
     }, directory)
@@ -35,14 +44,15 @@ test('plugin-owned preferences activate contributions, yield native content and 
     await expect(page.getByText('界面呈现', { exact: true })).toHaveCount(0)
   }
   async function preference(name, enabled) {
-    await navigate(`Settings ${name}`)
+    await openModule('插件')
+    await openPluginPage(`tests.${name}`)
     const settings = await pluginFrame(name, 'settings')
     await settings.getByRole('checkbox', { name: 'Enable footer' }).setChecked(enabled)
     await expect(settings.getByRole('status')).toHaveText(enabled ? 'Enabled' : 'Disabled')
-    await navigate('任务')
+    await backToTasks()
   }
   await install('alpha')
-  await navigate('任务')
+  await backToTasks()
   await expect(nativeFooter()).toBeVisible()
   await preference('alpha', true)
   const alpha = await pluginFrame('alpha', 'footer')
@@ -72,7 +82,7 @@ test('plugin-owned preferences activate contributions, yield native content and 
 
   await instance.stop()
   ;({ app, page, diagnostics } = await instance.launch())
-  await navigate('任务')
+  await backToTasks()
   const restoredAlpha = await pluginFrame('alpha', 'footer')
   await expect.poll(() => restoredAlpha.evaluate(() => window.fixture.visible)).toBe(true)
   await page.evaluate(() => window.lexoraDesktop.extensions.enable('tests.alpha', false))

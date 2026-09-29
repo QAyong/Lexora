@@ -47,14 +47,13 @@ defineExpose({ revealActivity })
 </script>
 
 <template>
-  <div class="buddy-chat-agent-turn__flow">
+  <div v-show="!topToggle || !collapsed" class="buddy-chat-agent-turn__flow" :class="{ 'is-top-toggle': topToggle }">
     <button
       v-if="!topToggle && rows.length"
       class="buddy-chat-agent-turn__process-toggle buddy-chat-activity-row"
       type="button"
       :aria-expanded="!collapsed"
       :aria-controls="disclosureId"
-      :disabled="active"
       @click="emit('toggle')"
     >
       <DesktopIcon :component="Thinking20Regular" class="buddy-chat-activity-row__icon" aria-hidden="true" />
@@ -96,6 +95,10 @@ defineExpose({ revealActivity })
 </template>
 
 <style scoped lang="scss">
+@use './chatActivityRow' as activity;
+
+@include activity.header;
+
 .buddy-chat-agent-turn__flow {
   display: grid;
   min-width: 0;
@@ -105,22 +108,28 @@ defineExpose({ revealActivity })
 
 .buddy-chat-agent-turn__process-toggle {
   display: inline-flex;
-  width: 100%;
-  max-width: none;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
   justify-content: flex-start;
-  margin: 0;
-  padding-inline: 0;
-  padding-bottom: 8px;
+  margin-inline: -4px;
+  padding: 3px 4px;
   border: 0;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--buddy-border-subtle) 70%, transparent);
-  border-radius: 0;
+  border-radius: var(--buddy-radius-micro);
+  background: transparent;
   color: var(--buddy-chat-process-color);
+  font: inherit;
   text-align: start;
-}
+  cursor: pointer;
 
-.buddy-chat-agent-turn__process-toggle:disabled {
-  opacity: 1;
+  &:hover {
+    background: var(--buddy-state-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--buddy-focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 .buddy-chat-agent-turn__process-content {
@@ -128,6 +137,10 @@ defineExpose({ revealActivity })
   min-width: 0;
   gap: 6px;
   padding-top: 6px;
+}
+
+.buddy-chat-agent-turn__flow.is-top-toggle .buddy-chat-agent-turn__process-content {
+  padding-top: 0;
 }
 
 .buddy-chat-agent-turn__failure-detail {

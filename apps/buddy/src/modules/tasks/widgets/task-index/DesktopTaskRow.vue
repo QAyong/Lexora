@@ -106,8 +106,13 @@ const actions = computed<DropdownOption[]>(() => [
     ],
   },
   { type: 'divider', key: 'task-actions-divider' },
+  {
+    icon: () => h(DesktopIcon, { name: props.pinMode === 'pin' ? 'windowPin' : 'pinOff' }),
+    key: 'pin',
+    label: pinLabel.value,
+    show: props.pinMode !== undefined,
+  },
   { icon: () => hIcon(Edit20Regular), key: 'rename', label: t('desktop.tasks.renameTask') },
-  { icon: () => h(DesktopIcon, { name: 'delete' }), key: 'delete', label: t('desktop.tasks.deleteTask') },
 ])
 
 function hIcon(component: typeof Edit20Regular) {
@@ -125,6 +130,8 @@ function handleAction(action: string | number) {
     emit('assignMark', action.slice(5))
   if (action === 'rename')
     emit('rename')
+  if (action === 'pin')
+    emit('pin')
   if (action === 'delete')
     emit('delete')
 }
@@ -218,14 +225,12 @@ useTaskHistoryDrag({
             </button>
           </NDropdown>
           <button
-            v-if="pinMode"
-            class="desktop-task-sidebar__more desktop-task-sidebar__pin"
+            class="desktop-task-sidebar__more desktop-task-sidebar__delete"
             type="button"
-            :aria-label="pinLabel"
-            :aria-pressed="pinMode === 'unpin'"
-            @click="emit('pin')"
+            :aria-label="t('desktop.tasks.deleteTask')"
+            @click="emit('delete')"
           >
-            <DesktopIcon :name="pinMode === 'pin' ? 'windowPin' : 'pinOff'" :size="16" />
+            <DesktopIcon name="delete" :size="16" />
           </button>
         </div>
       </div>
@@ -396,11 +401,11 @@ button {
   justify-self: end;
 }
 
-.desktop-task-sidebar__pin {
+.desktop-task-sidebar__delete {
   color: var(--buddy-text-muted);
 
-  &[aria-pressed='true'] {
-    color: var(--buddy-accent-solid);
+  &:hover {
+    color: var(--buddy-status-danger-text);
   }
 }
 

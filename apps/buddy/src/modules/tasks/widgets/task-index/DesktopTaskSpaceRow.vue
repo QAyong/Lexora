@@ -6,6 +6,7 @@ import type { BuddyLocale } from '@/i18n/buddyI18n'
 import type { DesktopTaskPinnedDropPosition } from '@/modules/tasks/widgets/task-index/taskPinnedItems'
 import type { TaskSpaceMenuAction } from '@/modules/tasks/widgets/task-index/useTaskIndexManagement'
 import {
+  Add16Regular,
   ChevronDown16Regular,
   ChevronRight16Regular,
   Edit20Regular,
@@ -44,17 +45,20 @@ const emit = defineEmits<{
 }>()
 const { t } = useBuddyI18n(() => props.language)
 const router = useRouter()
+const pinLabel = computed(() => props.pinMode === 'pin'
+  ? t('desktop.tasks.pin')
+  : t('desktop.tasks.unpin'))
 const menuOptions = computed<DropdownOption[]>(() => [
-  {
-    icon: () => h(DesktopIcon, { name: 'navigationTask', size: 14 }),
-    key: 'new-task',
-    label: t('desktop.tasks.newTask'),
-  },
   {
     icon: () => h(DesktopIcon, { component: FolderOpen20Regular, size: 14 }),
     key: 'open-directory',
     label: t('desktop.tasks.openSpaceWorkingDirectory'),
     show: Boolean(props.space.primaryDirectory),
+  },
+  {
+    icon: () => h(DesktopIcon, { name: props.pinMode === 'pin' ? 'windowPin' : 'pinOff', size: 14 }),
+    key: 'pin',
+    label: pinLabel.value,
   },
   { key: 'task-management-divider', type: 'divider' },
   {
@@ -78,13 +82,14 @@ const menuThemeOverrides = {
   optionIconPrefixWidthSmall: '28px',
   optionSuffixWidthSmall: '12px',
 }
-const pinLabel = computed(() => props.pinMode === 'pin'
-  ? t('desktop.tasks.pin')
-  : t('desktop.tasks.unpin'))
 
 function handleMenuAction(action: string | number): void {
   if (action === 'skills') {
     void router.push(desktopRouteLocations.skills(props.space.id))
+    return
+  }
+  if (action === 'pin') {
+    emit('pin')
     return
   }
   if (action === 'new-task' || action === 'open-directory' || action === 'edit' || action === 'delete')
@@ -157,13 +162,12 @@ useTaskHistoryDrag({
         </button>
       </NDropdown>
       <button
-        class="desktop-task-space-row__action desktop-task-space-row__pin"
+        class="desktop-task-space-row__action"
         type="button"
-        :aria-label="pinLabel"
-        :aria-pressed="pinMode === 'unpin'"
-        @click="emit('pin')"
+        :aria-label="t('desktop.tasks.newTask')"
+        @click="emit('menu', 'new-task')"
       >
-        <DesktopIcon :name="pinMode === 'pin' ? 'windowPin' : 'pinOff'" :size="16" />
+        <DesktopIcon :component="Add16Regular" :size="16" />
       </button>
     </div>
   </div>
@@ -300,14 +304,6 @@ button {
   &:focus-visible {
     outline: 2px solid var(--buddy-focus-ring);
     outline-offset: -2px;
-  }
-}
-
-.desktop-task-space-row__pin {
-  color: var(--buddy-text-muted);
-
-  &[aria-pressed='true'] {
-    color: var(--buddy-accent-solid);
   }
 }
 </style>

@@ -84,8 +84,9 @@ describe('buddyChatMessageContent', () => {
         useProvideDesktopUi({
           language: shallowRef('zh-CN'),
           isDark: shallowRef(false),
-          appSidebarCollapsed: shallowRef(false),
+          sidebarCollapsed: shallowRef(false),
           chat: shallowRef({ outlinePosition: 'top-right', permissionMode: 'policy_approval', welcome: 'random' }),
+          agentIdentity: shallowRef({ avatar: '', avatarColor: null, initials: null, name: '' }),
         })
         useProvideChatContent({
           canPreviewFile,
@@ -223,8 +224,9 @@ function renderContent(message: LocalMessage, isDark = false) {
       useProvideDesktopUi({
         language: shallowRef('zh-CN'),
         isDark: shallowRef(isDark),
-        appSidebarCollapsed: shallowRef(false),
+        sidebarCollapsed: shallowRef(false),
         chat: shallowRef({ outlinePosition: 'top-right', permissionMode: 'policy_approval', welcome: 'random' }),
+        agentIdentity: shallowRef({ avatar: '', avatarColor: null, initials: null, name: '' }),
       })
       return () => h(BuddyChatMessageContent, {
         language: 'zh-CN',

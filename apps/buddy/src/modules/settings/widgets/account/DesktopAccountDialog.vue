@@ -5,9 +5,9 @@ import type { BuddyLocale } from '@/i18n/buddyI18n'
 import { Camera20Regular, Dismiss20Regular } from '@vicons/fluent'
 import { NButton, NForm, NFormItem, NInput, NModal } from 'naive-ui'
 import { computed, shallowRef, useTemplateRef, watch } from 'vue'
-import DesktopAccountAvatar from '@/app/shell/DesktopAccountAvatar.vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
+import DesktopAccountAvatar from './DesktopAccountAvatar.vue'
 
 const props = defineProps<{
   customProfile?: DesktopUserProfileConfig | null

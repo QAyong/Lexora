@@ -95,8 +95,9 @@ function mountTranscript(loadOutlineMessages: () => Promise<readonly LocalMessag
       useProvideDesktopUi({
         language: shallowRef('zh-CN'),
         isDark: shallowRef(false),
-        appSidebarCollapsed: shallowRef(false),
+        sidebarCollapsed: shallowRef(false),
         chat: shallowRef({ outlinePosition: 'top-right', permissionMode: 'policy_approval', welcome: 'random' }),
+        agentIdentity: shallowRef({ avatar: '', avatarColor: null, initials: null, name: '' }),
       })
       return () => h(DesktopChatTranscript, props.value)
     },

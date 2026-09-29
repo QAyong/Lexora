@@ -26,10 +26,10 @@ import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 import ModelIcon from '@/shared/ui/icon/ModelIcon.vue'
 import RuntimeIcon from '@/shared/ui/icon/RuntimeIcon.vue'
 import SkillIcon from '@/shared/ui/icon/SkillIcon.vue'
+import DesktopBackToTasksButton from '@/shared/ui/navigation/DesktopBackToTasksButton.vue'
 import DesktopWorkspaceSidebarIdentity from '@/shared/ui/workspace-sidebar/DesktopWorkspaceSidebarIdentity.vue'
 
 const props = defineProps<{
-  appSidebarCollapsed: boolean
   language: BuddyLocale
   capabilities: BuddyCapabilities | null
 }>()
@@ -80,7 +80,6 @@ const visibleGroups = computed(() => groups.map(group => ({
     <header class="desktop-settings-sidebar__header">
       <DesktopWorkspaceSidebarIdentity
         :label="t('desktop.navigation.settings')"
-        :visible="appSidebarCollapsed"
       />
     </header>
 
@@ -102,6 +101,10 @@ const visibleGroups = computed(() => groups.map(group => ({
         </RouterLink>
       </section>
     </div>
+
+    <footer class="desktop-settings-sidebar__footer">
+      <DesktopBackToTasksButton :language="language" />
+    </footer>
   </nav>
 </template>
 
@@ -135,6 +138,14 @@ const visibleGroups = computed(() => groups.map(group => ({
   gap: 1.15rem;
   overflow-y: auto;
   padding: 0.9rem 0.7rem;
+}
+
+.desktop-settings-sidebar__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  border-top: 1px solid var(--buddy-border-subtle);
+  padding: 0.5rem 0.75rem;
 }
 
 .desktop-settings-sidebar__group {

@@ -7,13 +7,14 @@ import type { LocalSpace } from '@buddy-shared/spaces/spaceApi'
 import type { TaskIndex, TaskMarks } from '../../contracts'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import type { TaskSpaceInput } from '@/modules/tasks/state/task-index/typing'
-import { Add20Regular, Tag20Regular } from '@vicons/fluent'
+import { Tag20Regular } from '@vicons/fluent'
 import { NAlert, NButton, NInput, NModal, NTooltip } from 'naive-ui'
 import { shallowRef, toRef } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import DesktopSpaceDialog from '@/modules/tasks/widgets/task-index/DesktopSpaceDialog.vue'
 import DesktopTaskRow from '@/modules/tasks/widgets/task-index/DesktopTaskRow.vue'
 import DesktopTaskSearchDialog from '@/modules/tasks/widgets/task-index/DesktopTaskSearchDialog.vue'
+import DesktopTaskSidebarExpandRow from '@/modules/tasks/widgets/task-index/DesktopTaskSidebarExpandRow.vue'
 import DesktopTaskSidebarSection from '@/modules/tasks/widgets/task-index/DesktopTaskSidebarSection.vue'
 import DesktopTaskSpaceRow from '@/modules/tasks/widgets/task-index/DesktopTaskSpaceRow.vue'
 import {
@@ -31,7 +32,6 @@ const props = defineProps<{
   activeConversationId: string | null
   pendingConversationIds?: readonly string[]
   marks: TaskMarks
-  appSidebarCollapsed: boolean
   language: BuddyLocale
   pinnedItems: ReadonlyArray<DesktopTaskPinnedItem>
   sidebar: TaskIndex['sidebar']
@@ -50,6 +50,7 @@ const emit = defineEmits<{
   renameTask: [conversationId: string, title: string]
   updatePinnedItems: [items: DesktopTaskPinnedItem[]]
 }>()
+defineSlots<{ footer?: () => unknown }>()
 
 const { t } = useBuddyI18n(() => props.language)
 const marksOpen = shallowRef(false)
@@ -80,6 +81,7 @@ const {
   dropPinnedItem,
   endPinnedDrag,
   enterPinnedDropTarget,
+  expandConversationGroup,
   getTaskTitle,
   getPinnedDropPosition,
   isSectionExpanded,
@@ -101,7 +103,7 @@ const {
   requestTaskRename,
   saveSpace,
   selectSpaceMenuAction,
-  globalTasks,
+  taskRows,
   taskDeleteTarget,
   taskRenameTarget,
   taskTitleDraft,
@@ -135,20 +137,11 @@ function openSearchSpace(spaceId: string) {
 </script>
 
 <template>
-  <aside class="desktop-task-sidebar">
+  <aside id="desktop-task-sidebar" class="desktop-task-sidebar">
     <header class="desktop-task-sidebar__header">
       <DesktopWorkspaceSidebarIdentity
         :label="t('desktop.navigation.tasks')"
-        :visible="appSidebarCollapsed"
       />
-      <NTooltip>
-        <template #trigger>
-          <button class="desktop-task-sidebar__search-trigger" type="button" :aria-label="t('desktop.search.title')" @click="searchOpen = true">
-            <DesktopIcon name="toolSearch" :size="16" />
-          </button>
-        </template>
-        {{ t('desktop.search.title') }}
-      </NTooltip>
       <NTooltip>
         <template #trigger>
           <button class="desktop-task-sidebar__marks-trigger" type="button" :aria-label="t('desktop.marks.manage')" @click="marksOpen = true">
@@ -157,14 +150,14 @@ function openSearchSpace(spaceId: string) {
         </template>
         {{ t('desktop.marks.manage') }}
       </NTooltip>
-      <button
-        class="desktop-task-sidebar__new-trigger"
-        type="button"
-        :aria-label="t('desktop.tasks.newTask')"
-        @click="emit('newTask', null)"
-      >
-        <DesktopIcon :component="Add20Regular" :size="16" />
-      </button>
+      <NTooltip>
+        <template #trigger>
+          <button class="desktop-task-sidebar__search-trigger" type="button" :aria-label="t('desktop.search.title')" @click="searchOpen = true">
+            <DesktopIcon name="toolSearch" :size="16" />
+          </button>
+        </template>
+        {{ t('desktop.search.title') }}
+      </NTooltip>
     </header>
 
     <NAlert v-if="marks.error.value && !marksOpen" type="error" :show-icon="false">
@@ -207,6 +200,12 @@ function openSearchSpace(spaceId: string) {
                 @toggle="toggleSpace(item.space.id)"
               />
             </div>
+            <DesktopTaskSidebarExpandRow
+              v-else-if="item.kind === 'expand'"
+              :label="t('desktop.tasks.expandRemaining', { count: item.remaining })"
+              space-task
+              @expand="expandConversationGroup(item.groupKey)"
+            />
             <DesktopTaskRow
               v-else
               :task-id="item.task.id"
@@ -218,7 +217,7 @@ function openSearchSpace(spaceId: string) {
               :language="language"
               :now="relativeTimeNow"
               :occurred-at="item.task.automationOccurrence?.scheduledFor ?? item.task.updatedAt"
-              :pin-mode="item.pinnedTopLevel ? 'unpin' : undefined"
+              :pin-mode="item.pinnedTopLevel ? 'unpin' : 'pin'"
               :space-task="item.spaceTask"
               :reorderable="item.pinnedTopLevel"
               :reorder-target="item.pinnedTopLevel"
@@ -229,7 +228,7 @@ function openSearchSpace(spaceId: string) {
               @drag-start="beginPinnedDrag(item.pinKey!)"
               @drop="dropPinnedItem(item.pinKey!, $event)"
               @open="emit('openTask', item.task.id)"
-              @pin="unpinItem(item.pinKey!)"
+              @pin="item.pinnedTopLevel ? unpinItem(item.pinKey!) : pinTask(item.task.id)"
               @rename="requestTaskRename(item.task)"
             />
           </template>
@@ -260,6 +259,12 @@ function openSearchSpace(spaceId: string) {
                 @toggle="toggleSpace(item.space.id)"
               />
             </div>
+            <DesktopTaskSidebarExpandRow
+              v-else-if="item.kind === 'expand'"
+              :label="t('desktop.tasks.expandRemaining', { count: item.remaining })"
+              space-task
+              @expand="expandConversationGroup(item.groupKey)"
+            />
             <DesktopTaskRow
               v-else
               :task-id="item.task.id"
@@ -268,11 +273,13 @@ function openSearchSpace(spaceId: string) {
               :language="language"
               :now="relativeTimeNow"
               :occurred-at="item.task.automationOccurrence?.scheduledFor ?? item.task.updatedAt"
+              pin-mode="pin"
               :space-task="item.spaceTask"
               v-bind="markBindings(item.task.id)"
               :title="getTaskTitle(item.task)"
               @delete="requestTaskDelete(item.task)"
               @open="emit('openTask', item.task.id)"
+              @pin="pinTask(item.task.id)"
               @rename="requestTaskRename(item.task)"
             />
           </template>
@@ -280,30 +287,38 @@ function openSearchSpace(spaceId: string) {
 
         <DesktopTaskSidebarSection
           :expanded="isSectionExpanded('tasks')"
-          :items="globalTasks"
-          key-field="id"
+          :items="taskRows"
+          key-field="key"
           :label="t('desktop.tasks.tasksSection')"
           :priority="DESKTOP_TASK_SIDEBAR_SECTION_PRIORITIES.tasks"
           :scroll-index="scrollAnchors.tasks"
           section="tasks"
+          show-add
+          @add="emit('newTask', null)"
           @scroll="index => recordScrollAnchor('tasks', index)"
           @update:expanded="value => setSectionExpanded('tasks', value)"
         >
-          <template #default="{ item: task }">
+          <template #default="{ item }">
+            <DesktopTaskSidebarExpandRow
+              v-if="item.kind === 'expand'"
+              :label="t('desktop.tasks.expandRemaining', { count: item.remaining })"
+              @expand="expandConversationGroup(item.groupKey)"
+            />
             <DesktopTaskRow
-              :task-id="task.id"
-              :active="task.id === activeConversationId"
-              :activity="task.activity"
-              v-bind="markBindings(task.id)"
+              v-else-if="item.kind === 'task'"
+              :task-id="item.task.id"
+              :active="item.task.id === activeConversationId"
+              :activity="item.task.activity"
+              v-bind="markBindings(item.task.id)"
               :language="language"
               :now="relativeTimeNow"
-              :occurred-at="task.automationOccurrence?.scheduledFor ?? task.updatedAt"
+              :occurred-at="item.task.automationOccurrence?.scheduledFor ?? item.task.updatedAt"
               pin-mode="pin"
-              :title="getTaskTitle(task)"
-              @delete="requestTaskDelete(task)"
-              @open="emit('openTask', task.id)"
-              @pin="pinTask(task.id)"
-              @rename="requestTaskRename(task)"
+              :title="getTaskTitle(item.task)"
+              @delete="requestTaskDelete(item.task)"
+              @open="emit('openTask', item.task.id)"
+              @pin="pinTask(item.task.id)"
+              @rename="requestTaskRename(item.task)"
             />
           </template>
         </DesktopTaskSidebarSection>
@@ -411,6 +426,8 @@ function openSearchSpace(spaceId: string) {
         </NButton>
       </template>
     </NModal>
+
+    <slot name="footer" />
   </aside>
 </template>
 
@@ -437,7 +454,6 @@ function openSearchSpace(spaceId: string) {
   padding: 0 0.5rem 0 0.75rem;
 }
 
-.desktop-task-sidebar__new-trigger,
 .desktop-task-sidebar__search-trigger,
 .desktop-task-sidebar__marks-trigger {
   display: grid;
