@@ -33,10 +33,6 @@ export function useTaskResourcePanel(options: TaskResourcePanelOptions) {
   watch(() => taskContext.activeTab.value?.id, () => {
     operation += 1
   }, { flush: 'sync' })
-  watch(taskContext.isOpen, (open) => {
-    if (!open)
-      operation += 1
-  }, { flush: 'sync' })
   onScopeDispose(() => {
     stopBrowserState()
     disposed = true

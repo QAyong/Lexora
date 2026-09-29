@@ -8,6 +8,46 @@ import { nextTick, shallowRef } from 'vue'
 import { createTaskPanel } from './contextPanelFixture'
 
 describe('useTaskContextPanel', () => {
+  it('restores session panel visibility from the workbench snapshot', async () => {
+    const activeConversationId = shallowRef<string | null>('conversation-a')
+    const panel = createTaskPanel({ activeConversationId })
+    panel.toggle()
+    await nextTick()
+    const snapshot = panel.snapshot()
+    expect(snapshot.openStates).toContainEqual(['task:conversation-a', true])
+
+    activeConversationId.value = 'conversation-b'
+    await nextTick()
+    expect(panel.isOpen.value).toBe(false)
+    activeConversationId.value = 'conversation-a'
+    await nextTick()
+    expect(panel.isOpen.value).toBe(true)
+
+    panel.toggle()
+    await nextTick()
+    panel.restoreSnapshot(snapshot)
+    await nextTick()
+    expect(panel.isOpen.value).toBe(true)
+  })
+
+  it('keeps independent browsing panel visibility global across task switches and mode changes', async () => {
+    const activeConversationId = shallowRef<string | null>('conversation-a')
+    const mode = shallowRef<'task' | 'independent'>('independent')
+    const panel = createTaskPanel({ activeConversationId, mode })
+    panel.toggle()
+    await nextTick()
+    activeConversationId.value = 'conversation-b'
+    await nextTick()
+    expect(panel.isOpen.value).toBe(true)
+
+    mode.value = 'task'
+    await nextTick()
+    expect(panel.isOpen.value).toBe(false)
+    mode.value = 'independent'
+    await nextTick()
+    expect(panel.isOpen.value).toBe(true)
+  })
+
   it('discards only context tabs owned by the closed new-task pane', async () => {
     const activeDraftId = shallowRef('first')
     const panel = createTaskPanel({ activeDraftId })
@@ -60,7 +100,7 @@ describe('useTaskContextPanel', () => {
     expect(panel.fileEntry.value).toBeNull()
   })
 
-  it('isolates manual tabs and restores each task selection without changing panel visibility', async () => {
+  it('isolates manual tabs and restores each task selection and panel visibility', async () => {
     const activeConversationId = shallowRef<string | null>(null)
     const panel = createTaskPanel({
       spaces: shallowRef([]),
@@ -86,7 +126,7 @@ describe('useTaskContextPanel', () => {
       await nextTick()
       expect(panel.tabs.value).toEqual([])
       expect(panel.activeTab.value).toBeNull()
-      expect(panel.isOpen.value).toBe(true)
+      expect(panel.isOpen.value).toBe(false)
       expect(panel.canAddChanges.value).toBe(true)
     }
     panel.addBrowser()
@@ -98,11 +138,11 @@ describe('useTaskContextPanel', () => {
     activeConversationId.value = 'conversation-2'
     expect(panel.tabs.value).toEqual([taskBrowser])
     expect(panel.activeTab.value).toEqual(taskBrowser)
+    expect(panel.isOpen.value).toBe(true)
     panel.toggle()
     activeConversationId.value = null
     await nextTick()
-    expect(panel.isOpen.value).toBe(false)
-    panel.toggle()
+    expect(panel.isOpen.value).toBe(true)
     expect(panel.activeTab.value).toEqual(first)
   })
 
@@ -265,7 +305,7 @@ describe('useTaskContextPanel', () => {
     ])]
     await nextTick()
 
-    expect(panel.isOpen.value).toBe(true)
+    expect(panel.isOpen.value).toBe(false)
     expect(panel.tabs.value).toEqual([])
     expect(panel.activeTab.value).toBeNull()
 
@@ -276,7 +316,7 @@ describe('useTaskContextPanel', () => {
 
     activeConversationId.value = null
     await nextTick()
-    expect(panel.isOpen.value).toBe(true)
+    expect(panel.isOpen.value).toBe(false)
     expect(panel.tabs.value).toEqual([])
   })
 
@@ -356,7 +396,7 @@ describe('useTaskContextPanel', () => {
 
     activeConversationId.value = 'conversation-2'
     await nextTick()
-    expect(panel.isOpen.value).toBe(true)
+    expect(panel.isOpen.value).toBe(false)
     expect(panel.tabs.value).toEqual([])
   })
 })

@@ -18,31 +18,58 @@ const router = useRouter()
 const { sidebarCollapsed, language } = useDesktopUi()
 const startupVisible = computed(() => !bindings.lifecycle.state.value.hasBeenReady && route.meta.settingsCategory !== 'logs')
 const activeView = computed(() => bindings.pages.current.value)
+const activeTaskScope = computed(() => {
+  const conversationId = bindings.workbench.activeTask.value?.workspace.session.activeConversationId.value
+  if (conversationId)
+    return `task:${conversationId}`
+  const resource = bindings.workbench.activeResource.value
+  return resource && (resource.scheme === 'task' || resource.scheme === 'draft')
+    ? `${resource.scheme}:${resource.id}`
+    : null
+})
 const contextOnLeft = shallowRef(false)
 const chatPaneHidden = shallowRef(false)
+const taskPaneStates = new Map<string, { contextOnLeft: boolean, chatPaneHidden: boolean }>()
 const rightRegionIsChat = computed(() => contextOnLeft.value && bindings.resources.isOpen.value)
 const rightRegionOpen = computed(() => rightRegionIsChat.value ? !chatPaneHidden.value : bindings.resources.isOpen.value)
 
-watch([activeView, bindings.resources.isOpen], ([view, resourcePanelOpen]) => {
-  if (view !== 'lexora.tasks' || !resourcePanelOpen)
-    chatPaneHidden.value = false
-})
+watch(bindings.resources.isOpen, (resourcePanelOpen) => {
+  if (resourcePanelOpen)
+    return
+  chatPaneHidden.value = false
+  const scope = activeTaskScope.value
+  if (scope && bindings.contextPanelMode.value === 'task') {
+    taskPaneStates.set(scope, { contextOnLeft: contextOnLeft.value, chatPaneHidden: false })
+  }
+}, { flush: 'sync' })
 
 watch(
-  [bindings.contextPanelMode, () => bindings.workbench.activeTask.value],
-  ([mode, task], [previousMode, previousTask]) => {
+  [bindings.contextPanelMode, activeTaskScope],
+  ([mode, taskScope], [previousMode, previousTaskScope]) => {
+    const taskChanged = Boolean(taskScope && taskScope !== previousTaskScope)
+    if (previousMode === 'task' && previousTaskScope && (taskScope !== previousTaskScope || mode !== previousMode)) {
+      taskPaneStates.set(previousTaskScope, {
+        contextOnLeft: contextOnLeft.value,
+        chatPaneHidden: chatPaneHidden.value,
+      })
+    }
+    if (!taskScope)
+      return
+
     const next = resolveContextPanePlacementOnChange({
       mode,
       previousMode,
-      taskChanged: task !== previousTask,
+      taskChanged,
       current: {
         contextOnLeft: contextOnLeft.value,
         chatPaneHidden: chatPaneHidden.value,
       },
+      savedTaskState: mode === 'task' ? taskPaneStates.get(taskScope) : null,
     })
     contextOnLeft.value = next.contextOnLeft
     chatPaneHidden.value = next.chatPaneHidden
   },
+  { flush: 'sync' },
 )
 
 function toggleCurrentRightRegion() {

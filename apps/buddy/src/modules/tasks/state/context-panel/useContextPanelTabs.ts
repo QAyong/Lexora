@@ -11,6 +11,7 @@ export function useContextPanelTabs(options: {
 }) {
   const resources = shallowRef<readonly TaskContextTab[]>([])
   const selections = shallowReactive(new Map<ContextPanelScope, string>())
+  const openStates = shallowReactive(new Map<ContextPanelScope, boolean>())
   const discardedScopes = new Set<ContextPanelScope>()
   const taskScope = computed<ContextPanelScope>(() => options.conversationId.value
     ? taskContextPanelScope(options.conversationId.value)
@@ -108,7 +109,19 @@ export function useContextPanelTabs(options: {
   }
 
   function snapshot() {
-    return { tabs: resources.value, selections: [...selections] }
+    return { tabs: resources.value, selections: [...selections], openStates: [...openStates] }
+  }
+  function setOpen(scope: ContextPanelScope, open: boolean) {
+    openStates.set(scope, open)
+  }
+  function getOpen(scope: ContextPanelScope) {
+    return openStates.get(scope)
+  }
+  function restoreOpenStates(values: readonly (readonly [ContextPanelScope, boolean])[]) {
+    for (const [scope, open] of values) {
+      if (typeof open === 'boolean')
+        openStates.set(scope, open)
+    }
   }
   function restoreSelections(values: readonly (readonly [ContextPanelScope, string])[]) {
     for (const [scope, id] of values) {
@@ -117,5 +130,5 @@ export function useContextPanelTabs(options: {
     }
   }
 
-  return { snapshot, restoreSelections, activeTab: readonly(activeTab), tabs: readonly(tabs), resources: readonly(resources), scope: readonly(scope), select, put, close, update, retain, discard, discardDraft, adoptDraft }
+  return { snapshot, restoreSelections, restoreOpenStates, getOpen, setOpen, activeTab: readonly(activeTab), tabs: readonly(tabs), resources: readonly(resources), scope: readonly(scope), select, put, close, update, retain, discard, discardDraft, adoptDraft }
 }

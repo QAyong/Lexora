@@ -23,6 +23,37 @@ export function useTaskContextPanel(options: UseTaskContextPanelOptions) {
         store.put({ ...tab, source: target.source }, options.taskVisible.value && target.source.conversationId === options.activeConversationId.value)
     },
   })
+  let expectedOpenState: boolean | null = null
+  watch([control.initialized, store.scope, options.mode], ([initialized, scope, mode], [wasInitialized, previousScope, previousMode]) => {
+    if (!initialized)
+      return
+    if (wasInitialized && previousMode === 'task' && (previousScope !== scope || previousMode !== mode)) {
+      store.setOpen(previousScope, control.isOpen.value)
+    }
+    if (wasInitialized && previousMode === 'independent' && previousMode !== mode) {
+      store.setOpen('independent', control.isOpen.value)
+    }
+
+    let nextOpenState: boolean | undefined
+    if (wasInitialized && mode === 'task' && (previousScope !== scope || previousMode !== mode)) {
+      nextOpenState = store.getOpen(scope) ?? false
+    }
+    else if (wasInitialized && mode === 'independent' && previousMode === 'task') {
+      nextOpenState = store.getOpen('independent') ?? control.isOpen.value
+      store.setOpen('independent', nextOpenState)
+    }
+    if (nextOpenState !== undefined && control.isOpen.value !== nextOpenState) {
+      expectedOpenState = nextOpenState
+      void control.setOpen(nextOpenState)
+    }
+  }, { flush: 'sync' })
+  watch(control.isOpen, (open) => {
+    if (expectedOpenState === open) {
+      expectedOpenState = null
+      return
+    }
+    store.setOpen(options.mode.value === 'task' ? store.scope.value : 'independent', open)
+  }, { flush: 'sync' })
   const fileSpaces = computed(() => options.spaces.value.filter(space => space.revokedAt === null
     && space.primaryDirectory && space.primaryDirectory.revokedAt === null))
   const currentFileSpace = computed(() => fileSpaces.value.find(space => space.id === options.activeSpace?.value?.id) ?? null)
@@ -195,11 +226,25 @@ export function useTaskContextPanel(options: UseTaskContextPanelOptions) {
 
   return {
     restoreSnapshot(value: unknown) {
-      if (!value || typeof value !== 'object')
+      if (!value || typeof value !== 'object') {
+        if (options.mode.value === 'task') {
+          expectedOpenState = false
+          void control.setOpen(false)
+        }
         return
-      const snapshot = value as { tabs?: unknown, selections?: unknown }
+      }
+      const snapshot = value as { tabs?: unknown, selections?: unknown, openStates?: unknown }
       if (Array.isArray(snapshot.tabs))
         snapshot.tabs.slice(0, 512).forEach(restoreTab)
+      if (Array.isArray(snapshot.openStates)) {
+        store.restoreOpenStates(snapshot.openStates.filter((entry): entry is [typeof store.scope.value, boolean] =>
+          Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'boolean'))
+      }
+      if (options.mode.value === 'task') {
+        const nextOpenState = store.getOpen(store.scope.value) ?? false
+        expectedOpenState = nextOpenState
+        void control.setOpen(nextOpenState)
+      }
       if (Array.isArray(snapshot.selections)) {
         for (const selection of snapshot.selections) {
           const parsed = readContextSelection(selection)

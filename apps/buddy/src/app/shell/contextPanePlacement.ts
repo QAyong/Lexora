@@ -10,11 +10,10 @@ export function resolveContextPanePlacementOnChange(input: {
   previousMode: DesktopContextPanelMode
   taskChanged: boolean
   current: ContextPanePlacementState
+  savedTaskState?: ContextPanePlacementState | null
 }): ContextPanePlacementState {
-  return {
-    contextOnLeft: input.mode === 'task' && (input.mode !== input.previousMode || input.taskChanged)
-      ? false
-      : input.current.contextOnLeft,
-    chatPaneHidden: input.taskChanged ? false : input.current.chatPaneHidden,
+  if (input.mode === 'task' && (input.mode !== input.previousMode || input.taskChanged)) {
+    return input.savedTaskState ?? { contextOnLeft: false, chatPaneHidden: false }
   }
+  return input.current
 }

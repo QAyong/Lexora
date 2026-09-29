@@ -9,12 +9,14 @@ export function useContextPanelControl(options: {
   onError: () => void
 }) {
   const state = shallowRef<ContextPanelState>({ revision: -1, open: false, target: null })
+  const initialized = shallowRef(false)
   let disposed = false
   function apply(value: ContextPanelState) {
     const next = contextPanelStateSchema.parse(value)
     if (disposed || next.revision <= state.value.revision)
       return
     state.value = next
+    initialized.value = true
     if (next.open && next.target)
       options.onTarget(next.target)
   }
@@ -37,6 +39,8 @@ export function useContextPanelControl(options: {
 
   return {
     isOpen: computed(() => state.value.open),
+    initialized: computed(() => initialized.value),
+    setOpen: (open: boolean) => execute({ action: open ? 'open' : 'close', source: options.getSource() }),
     open: () => execute({ action: 'open', source: options.getSource() }),
     close: () => execute({ action: 'close', source: options.getSource() }),
     toggle: () => execute({ action: state.value.open ? 'close' : 'open', source: options.getSource() }),
