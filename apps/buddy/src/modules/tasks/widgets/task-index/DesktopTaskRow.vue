@@ -65,8 +65,6 @@ const emit = defineEmits<{
 const { t } = useBuddyI18n(() => props.language)
 const { clipboard } = useTaskEnvironment()
 const notification = useMessage()
-const menuVisible = shallowRef(false)
-const menuPosition = shallowRef({ x: 0, y: 0 })
 const opening = shallowRef(false)
 watch(() => props.loading, (loading, _, cleanup) => {
   opening.value = false
@@ -114,7 +112,6 @@ const actions = computed<DropdownOption[]>(() => [
   },
   { type: 'divider', key: 'task-actions-divider' },
   { icon: () => hIcon(Copy20Regular), key: 'copy-session-reference', label: t('desktop.tasks.copySessionReference') },
-  { type: 'divider', key: 'task-actions-divider-2' },
   { icon: () => hIcon(Edit20Regular), key: 'rename', label: t('desktop.tasks.renameTask') },
   { icon: () => h(DesktopIcon, { name: 'delete' }), key: 'delete', label: t('desktop.tasks.deleteTask') },
 ])
@@ -140,11 +137,6 @@ function handleAction(action: string | number) {
     void clipboard.writeText(formatSessionReferenceClipboard({ id: props.taskId, title: props.title.slice(0, 80) }))
       .catch(() => notification.error(t('desktop.chat.copyFailed')))
   }
-}
-
-function openMenu(event: MouseEvent) {
-  menuPosition.value = { x: event.clientX, y: event.clientY }
-  menuVisible.value = true
 }
 
 const dragId = useId()
@@ -179,7 +171,6 @@ useTaskHistoryDrag({
       'is-space-task': spaceTask,
       'is-reorderable': reorderable,
     }"
-    @contextmenu.prevent="openMenu"
   >
     <div
       class="desktop-task-row__surface"
@@ -227,12 +218,11 @@ useTaskHistoryDrag({
           <DesktopIcon :component="activityIcon" />
         </span>
         <div class="desktop-task-row__actions">
-          <NDropdown :show="menuVisible" trigger="manual" placement="bottom-start" :x="menuPosition.x" :y="menuPosition.y" :options="actions" @update:show="menuVisible = $event" @select="handleAction">
+          <NDropdown trigger="click" placement="bottom-start" :options="actions" @select="handleAction">
             <button
               class="desktop-task-sidebar__more"
               type="button"
               :aria-label="t('desktop.tasks.moreActions')"
-              @click="openMenu"
             >
               <DesktopIcon :component="MoreHorizontal20Regular" />
             </button>

@@ -8,6 +8,7 @@ import { buddyUserContentToText, readBuddyUserMessageContent } from '../../../..
 
 export const SESSION_ASK_TOOL = 'lexora_session_ask'
 const parameters = Type.Object({ question: Type.String({ minLength: 1, maxLength: 4000 }) }, { additionalProperties: false })
+const questionSegmenter = new Intl.Segmenter('zh', { granularity: 'word' })
 
 export function createSessionAskCapability(options: {
   conversationId: string
@@ -30,12 +31,12 @@ export function createSessionAskCapability(options: {
       if (!question || !current || current.deletedAt || !runInput)
         return { content: [{ type: 'text', text: 'Unable to read the referenced session.' }], details: { count: 0 } }
       const references = runInput.contextItems.filter(item => item.kind === 'sessionReference')
-      const terms = [...new Set(question.toLocaleLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? [])].slice(0, 24)
+      const terms = tokenizeQuestion(question)
       const results: Array<{ sessionId: string, title: string, messageId: string, role: string, createdAt: string, excerpt: string }> = []
       for (const reference of references) {
         signal?.throwIfAborted()
         const target = options.conversations.findById(reference.value)
-        if (!target || target.deletedAt || (target.spaceId !== null && target.spaceId !== current.spaceId) || !target.activeBranchId)
+        if (!target || target.deletedAt || !target.activeBranchId)
           continue
         let beforeMessageId: string | undefined
         while (results.length < 12) {
@@ -70,9 +71,22 @@ export function createSessionAskCapability(options: {
   })
   return {
     classify: (event: ToolCallEvent) => event.toolName === SESSION_ASK_TOOL ? { access: 'read', paths: [] } : null,
-    disclosure: { group: 'system', keywords: 'Search or retrieve details from an explicitly referenced historical conversation or session.', toolNames: [SESSION_ASK_TOOL] },
+    disclosure: [{
+      source: { kind: 'builtin', id: 'session_reference', title: 'Referenced sessions' },
+      exposure: 'on_demand',
+      keywords: '引用会话 历史对话 检索 搜索历史 Search referenced session conversation history',
+      tools: [{ name: SESSION_ASK_TOOL, title: 'Search referenced sessions' }],
+    }],
     extension: { name: 'lexora-session-ask', factory: (pi) => { pi.registerTool(tool) } },
   }
+}
+
+function tokenizeQuestion(question: string): string[] {
+  const segments = [...questionSegmenter.segment(question.toLocaleLowerCase())]
+    .filter(part => part.isWordLike)
+    .map(part => part.segment)
+  const terms = [...new Set(segments.filter(segment => [...segment].length > 1))].slice(0, 24)
+  return terms.length ? terms : [...new Set(segments)].slice(0, 24)
 }
 
 function extractText(role: string, content: unknown): string {

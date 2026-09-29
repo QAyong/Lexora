@@ -19,17 +19,15 @@ function conversation(id: string, spaceId: string | null, title: string | null =
 }
 
 describe('session reference authorization', () => {
-  it('allows a global session from any space and replaces its clipboard title with the stored title', () => {
+  it('allows a global session and replaces its clipboard title with the stored title', () => {
     const findById = vi.fn(() => conversation('global', null, 'Real\nTitle'))
-    expect(resolveAuthorizedSessionReferences([{ id: 'global', title: 'Forged title' }], 'space-a', { findById }))
+    expect(resolveAuthorizedSessionReferences([{ id: 'global', title: 'Forged title' }], { findById }))
       .toEqual([{ id: 'global', title: 'Real Title' }])
   })
 
-  it('allows a session only from its own space', () => {
-    const findById = vi.fn(() => conversation('scoped', 'space-a'))
-    expect(resolveAuthorizedSessionReferences([{ id: 'scoped', title: 'Session' }], 'space-a', { findById })).toHaveLength(1)
-    expect(() => resolveAuthorizedSessionReferences([{ id: 'scoped', title: 'Session' }], null, { findById }))
-      .toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }))
+  it('allows a session from a different space', () => {
+    const findById = vi.fn(() => conversation('scoped', 'space-b'))
+    expect(resolveAuthorizedSessionReferences([{ id: 'scoped', title: 'Session' }], { findById })).toHaveLength(1)
   })
 
   it('rejects deleted or missing sessions and silently deduplicates references', () => {
@@ -37,10 +35,10 @@ describe('session reference authorization', () => {
     expect(resolveAuthorizedSessionReferences([
       { id: 'ok', title: 'Old title' },
       { id: 'ok', title: 'Duplicate' },
-    ], null, { findById })).toEqual([{ id: 'ok', title: 'Session' }])
-    expect(() => resolveAuthorizedSessionReferences([{ id: 'deleted', title: 'Session' }], null, { findById }))
+    ], { findById })).toEqual([{ id: 'ok', title: 'Session' }])
+    expect(() => resolveAuthorizedSessionReferences([{ id: 'deleted', title: 'Session' }], { findById }))
       .toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }))
-    expect(() => resolveAuthorizedSessionReferences([{ id: 'missing', title: 'Session' }], null, { findById }))
+    expect(() => resolveAuthorizedSessionReferences([{ id: 'missing', title: 'Session' }], { findById }))
       .toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }))
   })
 })

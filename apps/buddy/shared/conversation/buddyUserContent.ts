@@ -60,6 +60,7 @@ export const buddyInlineNodeV1Schema = z.union([
   z.object({ text: z.string().min(1), type: z.literal('text') }).strict().readonly(),
   z.object({ type: z.literal('hard_break') }).strict().readonly(),
   z.object({ resourceId: buddyResourceIdSchema, type: z.literal('resource_ref') }).strict().readonly(),
+  z.object({ sessionId: buddyResourceIdSchema, type: z.literal('session_ref') }).strict().readonly(),
   buddyPromptDirectiveSchema,
 ])
 
@@ -187,6 +188,7 @@ export function buddyUserContentToText(
       case 'text': return node.text
       case 'hard_break': return '\n'
       case 'resource_ref': return resourceLabel(node.resourceId)
+      case 'session_ref': return ''
       case 'prompt_directive': return buddyPromptDirectiveToText(node)
       default: throw new Error('Unsupported Composer inline node')
     }

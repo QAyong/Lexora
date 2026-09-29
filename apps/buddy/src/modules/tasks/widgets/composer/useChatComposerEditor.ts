@@ -7,7 +7,7 @@ import { useEditor } from '@tiptap/vue-3'
 import { computed, shallowRef, watch } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import { createChatComposerContentFromText, findChatComposerTrigger, getChatComposerResourceIds, serializeChatComposerContent, shouldSubmitChatComposerKey } from '@/modules/prompt-input'
-import { ChatComposerDocument, ChatComposerPromptDirective, ChatComposerResourceClipboard, ChatComposerResourceReference, moveChatComposerResourceSelection } from '@/modules/prompt-input/ui'
+import { ChatComposerDocument, ChatComposerPromptDirective, ChatComposerResourceClipboard, ChatComposerResourceReference, ChatComposerSessionReference, moveChatComposerResourceSelection } from '@/modules/prompt-input/ui'
 import { useWorkbenchAnchor } from '@/shared/ui/contributions/workbenchUiContext'
 import { resolveFileIcon } from '@/shared/ui/file-icon'
 import { getChatImageLabels } from '../../model/attachments/chatAttachmentView'
@@ -60,6 +60,7 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
           }
         },
       }),
+      ChatComposerSessionReference,
       ChatComposerResourceClipboard.configure({
         draftId: () => options.draftId.value,
         rejectedIds: options.rejectedResourceIds,
@@ -114,9 +115,11 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
   watch(
     [options.draft, options.composerContent],
     ([draft, composerContent]) => {
+      const incomingContent = serializeChatComposerContent(composerContent)
+      const currentContent = serializedContent.value
       if (
-        draft === serializedContent.value.content
-        && JSON.stringify(composerContent) === JSON.stringify(contentJSON.value)
+        draft === currentContent.content
+        && JSON.stringify(incomingContent.userContent) === JSON.stringify(currentContent.userContent)
       ) {
         return
       }

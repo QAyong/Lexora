@@ -193,11 +193,7 @@ export class ChatTurnService {
     const space = spaceId
       ? requireActiveSpace(this.#options.spaces.findById(spaceId))
       : null
-    const sessionReferences = resolveAuthorizedSessionReferences(
-      draft.content.sessionReferences ?? [],
-      space?.id ?? null,
-      this.#options.conversations,
-    )
+    const sessionReferences = resolveAuthorizedSessionReferences(draft.content.sessionReferences ?? [], this.#options.conversations)
     const conversationId = scope.conversationId ?? randomUUID()
     if (
       existingConversation
@@ -374,7 +370,7 @@ export class ChatTurnService {
     const forkedFromMessageId = sourceIndex > 0 ? history[sourceIndex - 1]?.id ?? null : null
     const space = this.#resolveConversationSpace(conversation)
     const sessionReferences = draft
-      ? resolveAuthorizedSessionReferences(draft.content.sessionReferences ?? [], space?.id ?? null, this.#options.conversations)
+      ? resolveAuthorizedSessionReferences(draft.content.sessionReferences ?? [], this.#options.conversations)
       : []
     const content = draft ? buddyUserContentToText(draft.content).trim() : ''
     const selectedModel = draft ? await this.#resolveSelection(null, null, draft.modelSelection) : undefined

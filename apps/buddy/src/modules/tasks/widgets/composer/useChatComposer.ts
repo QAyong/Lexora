@@ -1,5 +1,5 @@
 import type { BuddyChatCommandName } from '@buddy-shared/conversation/buddyChatCommands'
-import type { BuddyMessageQuote, BuddySessionReference } from '@buddy-shared/conversation/buddyUserContent'
+import type { BuddyMessageQuote } from '@buddy-shared/conversation/buddyUserContent'
 import type { BuddyComposerSource } from '@buddy-shared/conversation/composerResource'
 import type { JSONContent } from '@tiptap/core'
 import type { ComposerResourceCard, UseChatComposerOptions } from './typing'
@@ -8,7 +8,7 @@ import { getBuddyChatCommandDefinition, isBuddyRunChatCommand, parseBuddyChatCom
 import { composerReferencePath } from '@buddy-shared/conversation/composerReferencePath'
 import { computed, onScopeDispose, watch } from 'vue'
 import { CHAT_PROMPT_DIRECTIVE_NODE_NAME, getChatComposerResourceIds, serializeChatComposerContent } from '@/modules/prompt-input'
-import { insertChatComposerResources, insertResolvedChatComposerResource, removeChatComposerPanelResource, removeChatComposerResource } from '@/modules/prompt-input/ui'
+import { insertChatComposerResources, insertChatComposerSessionReferences, insertResolvedChatComposerResource, removeChatComposerPanelResource, removeChatComposerResource, removeChatComposerSessionReference } from '@/modules/prompt-input/ui'
 import { useConversationStatusPanel } from '@/modules/tasks/state/runs/conversationStatusPanel'
 import { resolveComposerResourcePreviewUrl } from '../../model/attachments/chatAttachmentView'
 import { resolveChatComposerModelInputIssue } from '../../model/composer/chatComposerModelCapability'
@@ -58,13 +58,7 @@ export function useChatComposer(options: UseChatComposerOptions) {
       const current = editor.value
       if (!current?.isEditable)
         return
-      const existing = (current.state.doc.attrs.sessionReferences ?? []) as BuddySessionReference[]
-      const byId = new Map(existing.map(item => [item.id, item]))
-      for (const item of references) {
-        if (!byId.has(item.id) && byId.size < 16)
-          byId.set(item.id, item)
-      }
-      current.view.dispatch(current.state.tr.setDocAttribute('sessionReferences', [...byId.values()]))
+      insertChatComposerSessionReferences(current, references)
       if (text)
         current.chain().focus().insertContent(text).run()
     },
@@ -88,7 +82,7 @@ export function useChatComposer(options: UseChatComposerOptions) {
     ? !localCommands.pending.value && !options.isSending.value
     : options.canSend.value && modelInputIssue.value === null && (
       (serializedContent.value.userContent?.sessionReferences?.length
-        ? serializedContent.value.content.length > 0
+        ? serializedContent.value.content.trim().length > 0
         : serializedContent.value.content.length > 0 || resourceIds.value.length > 0 || quotes.value.length > 0)
     ) && resourceIds.value.every(id => resourceById.value.get(id)?.resource.state === 'ready'))
   const panelResources = computed(() => (contentJSON.value.attrs?.panelResourceIds as string[] ?? [])
@@ -154,7 +148,7 @@ export function useChatComposer(options: UseChatComposerOptions) {
     return options.canSend.value
       && modelInputIssue.value === null
       && Boolean(serialized.userContent?.sessionReferences?.length
-        ? serialized.content.length
+        ? serialized.content.trim().length
         : serialized.content.length || submittedResourceIds.length || serialized.userContent?.quotes?.length)
       && submittedResourceIds.every(id => resourceById.value.get(id)?.resource.state === 'ready')
   }
@@ -328,9 +322,7 @@ export function useChatComposer(options: UseChatComposerOptions) {
       const current = editor.value
       if (!current)
         return false
-      const values = (current.state.doc.attrs.sessionReferences ?? []) as BuddySessionReference[]
-      current.view.dispatch(current.state.tr.setDocAttribute('sessionReferences', values.filter(item => item.id !== id)))
-      return true
+      return removeChatComposerSessionReference(current, id)
     },
     removeResource,
     removePanelResource: (id: string) => editor.value && removeChatComposerPanelResource(editor.value, id),
