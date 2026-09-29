@@ -27,18 +27,18 @@ const resolvedProfile = computed(() => resolveUserProfile(props.profileConfig, p
     </h2>
     <div class="desktop-account-settings__group">
       <div class="desktop-account-settings__row" data-testid="desktop-account-setting">
+        <DesktopAccountAvatar
+          size="medium"
+          :avatar-url="resolvedProfile.avatarUrl"
+          :background-color="resolvedProfile.avatarColor"
+          :initials="resolvedProfile.initials"
+          :name="resolvedProfile.userName"
+        />
         <div class="desktop-account-settings__copy">
           <strong>{{ resolvedProfile.userName }}</strong>
           <small>{{ t('desktop.account.deviceName') }}：{{ resolvedProfile.deviceName }}</small>
         </div>
         <div class="desktop-account-settings__control">
-          <DesktopAccountAvatar
-            size="medium"
-            :avatar-url="resolvedProfile.avatarUrl"
-            :background-color="resolvedProfile.avatarColor"
-            :initials="resolvedProfile.initials"
-            :name="resolvedProfile.userName"
-          />
           <NButton size="small" secondary @click="dialogOpen = true">
             {{ t('desktop.account.editProfile') }}
           </NButton>
@@ -77,9 +77,9 @@ const resolvedProfile = computed(() => resolveUserProfile(props.profileConfig, p
 .desktop-account-settings__row {
   display: grid;
   min-height: 4rem;
-  grid-template-columns: minmax(0, 1fr) minmax(10rem, 19rem);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 2rem;
+  gap: 0.9rem;
   padding: 0.75rem 0.9rem;
 }
 
@@ -113,11 +113,12 @@ const resolvedProfile = computed(() => resolveUserProfile(props.profileConfig, p
 
 @container (max-width: 560px) {
   .desktop-account-settings__row {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 0.7rem;
   }
 
   .desktop-account-settings__control {
+    grid-column: 2;
     justify-content: flex-start;
   }
 }
