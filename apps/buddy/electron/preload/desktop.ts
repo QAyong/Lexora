@@ -1,7 +1,9 @@
 import type { ContextPanelCommand, ContextPanelState } from '../../shared/context-panel/contextPanel'
-import type { ApplicationDiagnostic } from '../../shared/diagnostics/applicationDiagnostic'
 import type { ApplicationLogExport, ApplicationLogQuery } from '../../shared/diagnostics/applicationLog'
 import type { ApplicationStartupState } from '../../shared/diagnostics/applicationStartup'
+import type { CpuProfileRequest } from '../../shared/diagnostics/performanceDiagnostic'
+import type { RendererDiagnosticReport } from '../../shared/diagnostics/rendererDiagnostic'
+import type { RendererLifecycleReport } from '../../shared/lifecycle/serviceLifecycle'
 import type { DesktopAppInfo, DesktopOpenTarget, DesktopWindowState, LexoraConfigPatch, LexoraDesktopApi } from '../shared/desktopApi'
 import type { DesktopCommandId } from '../shared/desktopCommands'
 import { ipcRenderer, webUtils } from 'electron'
@@ -12,7 +14,7 @@ export function createDesktopApi(): Pick<LexoraDesktopApi, 'app' | 'clipboard' |
   return {
     workbench: Object.freeze({
       read: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.workbenchRead),
-      write: (state: import('../../shared/workbench/workbenchState').WorkbenchState) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.workbenchWrite, state),
+      write: (state: import('../../shared/workbench/workbenchState').WorkbenchState, options?: import('../../shared/workbench/workbenchState').WorkbenchWriteOptions) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.workbenchWrite, state, options),
     }),
     contextPanel: Object.freeze({
       getState: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.contextPanelGetState),
@@ -24,8 +26,13 @@ export function createDesktopApi(): Pick<LexoraDesktopApi, 'app' | 'clipboard' |
       onStateChanged: (listener: (state: ContextPanelState) => void) => subscribe(DESKTOP_IPC_CHANNELS.contextPanelStateChanged, listener),
     }),
     app: Object.freeze({
+      performance: Object.freeze({
+        snapshot: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appPerformanceSnapshot),
+        capture: (request: CpuProfileRequest) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appPerformanceCapture, { target: request.target, pid: request.pid }),
+      }),
       logs: Object.freeze({
-        exportDiagnostics: (input: ApplicationLogExport) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appLogsExportDiagnostics, { launch: input.launch }),
+        report: (input: RendererDiagnosticReport) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appLogsReport, input),
+        exportDiagnostics: (input: ApplicationLogExport) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appLogsExportDiagnostics, { launch: input.launch, anchor: input.anchor ? { ...input.anchor } : undefined }),
         query: (input: ApplicationLogQuery) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appLogsQuery, {
           ...input,
           anchor: input.anchor ? { launchId: input.anchor.launchId, sequence: input.anchor.sequence } : undefined,
@@ -34,7 +41,7 @@ export function createDesktopApi(): Pick<LexoraDesktopApi, 'app' | 'clipboard' |
       startup: Object.freeze({
         getState: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appStartupGetState),
         onStateChanged: (listener: (state: ApplicationStartupState) => void) => subscribe(DESKTOP_IPC_CHANNELS.appStartupStateChanged, listener),
-        reportEvent: (event: ApplicationDiagnostic) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appStartupReport, { ...event }),
+        reportLifecycle: (report: RendererLifecycleReport) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appStartupReport, report),
       }),
       checkForUpdates: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appCheckForUpdates),
       getInfo: (): Promise<DesktopAppInfo> => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appGetInfo),
@@ -79,6 +86,7 @@ export function createDesktopApi(): Pick<LexoraDesktopApi, 'app' | 'clipboard' |
       execute: (commandId: DesktopCommandId) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.commandExecute, commandId),
     }),
     settings: Object.freeze({
+      onChanged: listener => subscribe(DESKTOP_IPC_CHANNELS.settingsChanged, listener),
       get: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.settingsGet),
       update: (patch: LexoraConfigPatch) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.settingsUpdate, patch),
     }),

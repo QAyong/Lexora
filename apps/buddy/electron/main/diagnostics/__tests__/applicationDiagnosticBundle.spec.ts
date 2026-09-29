@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { createTemporaryDirectory } from '@buddy-tests/temporaryDirectories'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import { DesktopDiagnosticLogger } from '../../desktopDiagnostics'
 import { createApplicationDiagnosticBundle } from '../applicationDiagnosticBundle'
 import { ApplicationLogReader } from '../ApplicationLogReader'
 
@@ -25,6 +26,52 @@ function unpack(bytes: Uint8Array) {
 }
 
 describe('application diagnostic bundles', () => {
+  it('preserves space and directory identities through encoding, reading and export without admitting file details', async () => {
+    const directory = await createTemporaryDirectory('lexora-space-diagnostic-bundle-')
+    const logger = new DesktopDiagnosticLogger({ directory, appVersion: '0.9.2', userHome: '/fixture' })
+    const identity = { spaceId: crypto.randomUUID(), directoryId: crypto.randomUUID(), operationId: crypto.randomUUID(), revision: 3 }
+    const fact = { ...identity, scope: 'local-service', level: 'error', event: 'space.file.response_denied', sourceId: 'fixture-private-source', message: 'fixture-private-local-detail', payload: { text: 'fixture-private-body', path: '/fixture/private-file' } } as const
+    expect(logger.record(fact)).toBe(true)
+    expect(logger.record({ ...fact, spaceId: '/fixture/private-space' })).toBe(false)
+    expect(logger.record({ ...fact, directoryId: '/fixture/private-directory' })).toBe(false)
+    await logger.close()
+    const reader = new ApplicationLogReader(directory, logger.launchId, '/fixture')
+    const page = await reader.query({})
+    expect(page.skippedRecords).toBe(0)
+    const queried = page.records.find(record => record.event === fact.event)
+    expect(queried).toMatchObject(identity)
+    expect(queried).not.toHaveProperty('payload')
+    const bundle = unpack((await createApplicationDiagnosticBundle(reader, 'current'))!.bytes)
+    expect(bundle.errors.find(record => record.event === fact.event)).toMatchObject(identity)
+    expect(bundle.context.find(record => record.event === fact.event)).toMatchObject(identity)
+    expect(JSON.stringify({ errors: bundle.errors, context: bundle.context })).not.toContain('fixture-private')
+  })
+
+  it('preserves safe renderer identities and version facts through encoding, reading and export alongside older rows', async () => {
+    const directory = await createTemporaryDirectory('lexora-renderer-diagnostic-bundle-')
+    const logger = new DesktopDiagnosticLogger({ directory, appVersion: '0.9.2', userHome: '/fixture' })
+    const workingCopyId = crypto.randomUUID()
+    const firstProducer = crypto.randomUUID()
+    const secondProducer = crypto.randomUUID()
+    const fact = { scope: 'desktop', level: 'error', event: 'workbench.copy.save_failed', workingCopyId, contentVersion: 3, savedVersion: 1, dirty: true, revision: 5, sourceSequence: 1, occurredAt: '2026-09-28T00:00:00.000Z' } as const
+    expect(logger.record({ ...fact, producerInstanceId: firstProducer, sourceId: 'fixture-private-renderer' })).toBe(true)
+    expect(logger.record({ ...fact, producerInstanceId: secondProducer })).toBe(true)
+    expect(logger.record({ scope: 'desktop', level: 'info', event: 'app.ready' })).toBe(true)
+    await logger.close()
+    const reader = new ApplicationLogReader(directory, logger.launchId, '/fixture')
+    const page = await reader.query({})
+    expect(page.skippedRecords).toBe(0)
+    expect(page.records).toHaveLength(3)
+    const bundle = unpack((await createApplicationDiagnosticBundle(reader, 'current'))!.bytes)
+    expect(bundle.context.filter(record => record.workingCopyId === workingCopyId)).toMatchObject([
+      { producerInstanceId: firstProducer, sourceSequence: 1, contentVersion: 3, savedVersion: 1, dirty: true, revision: 5 },
+      { producerInstanceId: secondProducer, sourceSequence: 1, contentVersion: 3, savedVersion: 1, dirty: true, revision: 5 },
+    ])
+    expect(bundle.context.at(-1)).toMatchObject({ event: 'app.ready' })
+    expect(JSON.stringify(bundle.context)).not.toContain('fixture-private')
+    expect(bundle.context.some(record => 'sourceId' in record)).toBe(false)
+  })
+
   it('keeps successful startup steps and the launch network failure when exporting a later incident', async () => {
     const { reader } = await fixture([
       record(1, { event: 'network.start_failed', runId: undefined, level: 'warn', errorCode: 'NETWORK_START_FAILED', failure: { kind: 'network_startup', operation: 'listen', systemCode: 'UNKNOWN', errno: -4094 } }),
@@ -171,11 +218,40 @@ describe('application diagnostic bundles', () => {
     expect(context.every(record => record.launchId === 'launch-current')).toBe(true)
   })
 
+  it('joins sandbox host cleanup with the originating run through request identity', async () => {
+    const { reader } = await fixture([
+      record(1, { event: 'sandbox.requested', level: 'info', requestId: 'request-fixture', runId: 'run-fixture', errorCode: undefined }),
+      record(2, { event: 'sandbox.supervisor.cleanup_failed', level: 'error', requestId: 'request-fixture', runId: undefined, operationId: undefined }),
+    ])
+    const { context } = unpack((await createApplicationDiagnosticBundle(reader, 'current', { launchId: 'launch-current', sequence: 2 }))!.bytes)
+    expect(context.map(record => record.sequence)).toEqual([1, 2])
+  })
+
+  it('joins performance evidence to activity at sample time, preserving run and sandbox context without asserting causation', async () => {
+    const activity = { level: 'info', errorCode: undefined } as const
+    const performance = { ...activity, runId: undefined, operationId: 'performance-fixture', timestamp: '2026-09-24T00:10:00.000Z' }
+    const { reader } = await fixture([
+      record(1, { ...activity, event: 'run.started', timestamp: '2026-09-24T00:01:00.000Z' }),
+      record(2, { ...activity, event: 'sandbox.requested', requestId: 'request-fixture', timestamp: '2026-09-24T00:02:00.000Z' }),
+      record(3, { ...activity, event: 'run.completed', timestamp: '2026-09-24T00:05:10.000Z' }),
+      record(4, { ...activity, event: 'sandbox.supervisor.released', runId: undefined, requestId: 'request-fixture', timestamp: '2026-09-24T00:05:11.000Z' }),
+      record(5, { ...performance, event: 'performance.sample', performanceSample: { sampledAt: '2026-09-24T00:05:00.000Z', elapsedMs: 300000, collectionMs: 1, intervalMs: 5000, logicalCpuCount: 32, truncated: false, processes: [], proxy: { accepted: 0, reportedFailures: 0, opened: 0, closed: 0, active: 0 } } }),
+      record(6, { ...performance, level: 'warn', event: 'performance.sustained_cpu' }),
+      record(7, { ...activity, event: 'run.completed', runId: 'run-earlier', timestamp: '2026-09-24T00:02:00.000Z' }),
+      record(8, { ...activity, event: 'run.started', runId: 'run-later', timestamp: '2026-09-24T00:14:00.000Z' }),
+    ])
+    const { context, errors, manifest } = unpack((await createApplicationDiagnosticBundle(reader, 'current', { launchId: 'launch-current', sequence: 6 }))!.bytes)
+    expect(context.map(record => record.sequence)).toEqual([1, 2, 3, 4, 5, 6])
+    expect(errors).toEqual([])
+    expect(manifest.incidents[0]).toMatchObject({ association: 'identities-and-observation-window', runStartObserved: true, runEndObserved: true })
+  })
+
   it('retains cumulative recorder losses per launch while keeping legacy counts unknown', async () => {
     const loss = { event: 'recorder.loss', level: 'warn', runId: undefined, errorCode: undefined } as const
     const { reader } = await fixture([
       record(1, { ...loss, recorderLoss: { dropped: 7, failed: 4 } }),
       record(2, { ...loss, recorderLoss: { dropped: 9, failed: 4 } }),
+      record(3, { ...loss, producerInstanceId: 'b3827615-1bd4-4c61-8c1b-f15e6b648c73', recorderLoss: { dropped: 5, failed: 1 } }),
       record(1, { ...loss, launchId: 'launch-other', recorderLoss: { dropped: 3, failed: 2 } }),
       record(1, { ...loss, launchId: 'launch-legacy', message: 'private loss details' }),
     ])
@@ -183,6 +259,7 @@ describe('application diagnostic bundles', () => {
     expect(manifest.recorder).toMatchObject({ scope: 'scanned-records', lossObserved: true })
     expect(manifest.recorder.launches).toEqual(expect.arrayContaining([
       { launchId: 'launch-current', dropped: 9, failed: 4 },
+      { launchId: 'launch-current', producerInstanceId: 'b3827615-1bd4-4c61-8c1b-f15e6b648c73', dropped: 5, failed: 1 },
       { launchId: 'launch-other', dropped: 3, failed: 2 },
       { launchId: 'launch-legacy', dropped: null, failed: null },
     ]))

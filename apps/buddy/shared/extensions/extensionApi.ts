@@ -1,18 +1,24 @@
 import type { WorkbenchHitRegion, WorkbenchPaneSnapshot } from '../workbench/workbenchInteraction'
 import type { JsonValue } from '../workbench/workbenchState'
 import type { ControlProposal, WorkbenchPresentation } from '../workbench/workbenchUi'
+import type { ExtensionTaskAction, ExtensionTaskActionInput, ExtensionTaskActionResult } from './extensionActionApi'
 import type { ExtensionCatalogSnapshot } from './extensionCatalog'
+import type { ExtensionConditionsChanged, ExtensionConditionState } from './extensionConditions'
 import type { ExtensionInstallation } from './extensionInstallation'
 import type { ExtensionManifest } from './extensionManifest'
+import type { ExtensionConfiguration, ExtensionConfigurationSnapshot } from './extensionSettings'
 import { z } from 'zod'
 import { spaceFileTargetSchema } from '../spaces/spaceFileApi'
 import { workbenchPanesSchema } from '../workbench/workbenchInteraction'
 import { workbenchMenuSchema } from '../workbench/workbenchUi'
+import { extensionActionRpc } from './extensionActionApi'
 import { extensionIdSchema } from './extensionManifest'
+import { extensionConfigurationSchema } from './extensionSettings'
 
 export const EXTENSION_IPC = {
   request: 'lexora:extensions:request',
   changed: 'lexora:extensions:changed',
+  conditionsChanged: 'lexora:extensions:conditions-changed',
   review: 'lexora:extensions:review',
   workbench: 'lexora:extensions:workbench',
   workbenchReply: 'lexora:extensions:workbench-reply',
@@ -83,6 +89,7 @@ export interface ExtensionReview {
 }
 export type ExtensionWorkbenchEvent
   = | { kind: 'cancel', requestId: string }
+    | { kind: 'clear-data', requestId: string, extensionId: string }
     | { kind: 'open', requestId: string, extensionId: string, generation: string, viewType: string, resource: ExtensionResource | null, state: JsonValue, stateVersion: number }
     | { kind: 'state', requestId: string, viewId: string, generation: string, token: string, state: JsonValue, stateVersion: number }
     | { kind: 'interaction', requestId: string, extensionId: string, generation: string, interactionId: string, title: string | null }
@@ -95,6 +102,10 @@ export type ExtensionWorkbenchEvent
 
 export const extensionManagementSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list') }).strict(),
+  z.object({ action: z.literal('configuration'), id: extensionIdSchema }).strict(),
+  z.object({ action: z.literal('configurationSnapshot'), id: extensionIdSchema }).strict(),
+  z.object({ action: z.literal('settingConditions'), id: extensionIdSchema, items: z.array(z.string().max(180)).max(64), form: extensionConfigurationSchema.optional() }).strict(),
+  z.object({ action: z.literal('configure'), id: extensionIdSchema, patch: extensionConfigurationSchema }).strict(),
   z.object({ action: z.literal('installations') }).strict(),
   z.object({ action: z.literal('catalog'), refresh: z.boolean().default(false) }).strict(),
   z.object({ action: z.literal('reviewCatalog'), id: extensionIdSchema, version: z.string().max(80) }).strict(),
@@ -104,10 +115,12 @@ export const extensionManagementSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('cancelInstall'), token: z.string().uuid() }).strict(),
   z.object({ action: z.literal('enable'), id: extensionIdSchema, enabled: z.boolean() }).strict(),
   z.object({ action: z.literal('restart'), id: extensionIdSchema }).strict(),
-  z.object({ action: z.literal('uninstall'), id: extensionIdSchema }).strict(),
+  z.object({ action: z.literal('uninstall'), id: extensionIdSchema, clearData: z.boolean().default(false) }).strict(),
   z.object({ action: z.literal('devtools'), id: extensionIdSchema }).strict(),
   z.object({ action: z.literal('revokeResources'), id: extensionIdSchema }).strict(),
   z.object({ action: z.literal('execute'), id: extensionIdSchema, command: z.string().max(180), resource: spaceFileTargetSchema.nullable() }).strict(),
+  z.object({ action: z.literal('taskActions') }).strict(),
+  z.object({ action: z.literal('invokeTaskAction'), input: extensionActionRpc.invoke.input }).strict(),
   z.object({ action: z.literal('executeMenu'), id: extensionIdSchema, menu: z.string().max(180), invocation: extensionMenuInvocationSchema }).strict(),
   z.object({ action: z.literal('executeSlash'), id: extensionIdSchema, command: z.string().max(180), arguments: z.string().max(8192), instanceId: z.string().uuid().optional() }).strict(),
   z.object({ action: z.literal('updatePanes'), panes: workbenchPanesSchema }).strict(),
@@ -118,7 +131,14 @@ export const extensionManagementSchema = z.discriminatedUnion('action', [
 ])
 export type ExtensionManagementRequest = z.infer<typeof extensionManagementSchema>
 export interface ExtensionApi {
+  settingConditions: (id: string, items: string[], form?: ExtensionConfiguration) => Promise<Record<string, ExtensionConditionState>>
+  onConditionsChanged: (listener: (event: ExtensionConditionsChanged) => void) => () => void
+  taskActions: () => Promise<ExtensionTaskAction[]>
+  invokeTaskAction: (input: ExtensionTaskActionInput) => Promise<ExtensionTaskActionResult>
   list: () => Promise<ExtensionStatus[]>
+  configuration: (id: string) => Promise<ExtensionConfiguration>
+  configurationSnapshot: (id: string) => Promise<ExtensionConfigurationSnapshot>
+  configure: (id: string, patch: ExtensionConfiguration) => Promise<void>
   installations: () => Promise<ExtensionInstallation[]>
   catalog: (refresh?: boolean) => Promise<ExtensionCatalogSnapshot>
   reviewCatalog: (id: string, version: string) => Promise<ExtensionReview>
@@ -128,7 +148,7 @@ export interface ExtensionApi {
   cancelInstall: (token: string) => Promise<void>
   enable: (id: string, enabled: boolean) => Promise<void>
   restart: (id: string) => Promise<void>
-  uninstall: (id: string) => Promise<void>
+  uninstall: (id: string, options?: { clearData?: boolean }) => Promise<void>
   devtools: (id: string) => Promise<void>
   revokeResources: (id: string) => Promise<void>
   execute: (id: string, command: string, resource: import('../spaces/spaceFileApi').SpaceFileTarget | null) => Promise<void>

@@ -2,8 +2,8 @@
 import type { Ref } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { createApp, h, nextTick, shallowRef } from 'vue'
-import { useProvideDesktopUi } from '@/shared/ui/desktopUiContext'
 import { BRAND_ASSET_URLS } from '@/shared/branding/brandAssets'
+import { useProvideDesktopUi } from '@/shared/ui/desktopUiContext'
 import BuddyChatAgentIdentity from '../BuddyChatAgentIdentity.vue'
 
 interface AgentIdentityInput {

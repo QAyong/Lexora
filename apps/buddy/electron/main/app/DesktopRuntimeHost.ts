@@ -1,6 +1,7 @@
 import type { ExtensionInspection } from '../../../shared/extensions/extensionAuthoring'
 import type { LexoraConfig } from '../../shared/desktopApi'
 import type { BrowserIntegration } from '../browser/BrowserIntegration'
+import type { registerExtensionIpc } from '../extensions/registerExtensionIpc'
 import type { DesktopFeature } from '../platform/desktopFeatures'
 import type { CredentialVault } from '../secrets/CredentialVault'
 import type { DesktopWindowHost } from './DesktopWindowHost'
@@ -17,13 +18,14 @@ import { currentTarget } from '../../../platform/target'
 import { resolveWindowsPowerShell } from '../../../platform/windows/powerShell'
 import { automationNotifications } from '../../../shared/automation/automationApi'
 import { contextPanelRpc, contextPanelSourceSchema } from '../../../shared/context-panel/contextPanel'
-import { readDiagnosticError } from '../../../shared/diagnostics/applicationDiagnostic'
+import { extensionAgentInvocationSchema, extensionAgentRpc } from '../../../shared/extensions/extensionAgent'
 import { isLinux } from '../../../shared/platform/identifiers'
 import { runtimePreferencesRpc } from '../../../shared/runtime/runtimePreferences'
 import { installAttachmentProtocol } from '../attachmentProtocol'
 import { registerBrowserHostRpc } from '../browser/registerBrowserHostRpc'
 import { LexoraConfigStore } from '../config/LexoraConfigStore'
 import { ContextPanelHost } from '../context-panel/ContextPanelHost'
+import { DesktopPerformanceMonitor } from '../diagnostics/DesktopPerformanceMonitor'
 import { registerExtensionAuthoringRpc } from '../extensions/registerExtensionAuthoringRpc'
 import { DesktopNetwork } from '../network/DesktopNetwork'
 import { registerWebHostRpc } from '../network/registerWebHostRpc'
@@ -38,7 +40,9 @@ import { createCredentialVault } from '../secrets/CredentialVault'
 import { registerCredentialHostRpc } from '../secrets/registerCredentialHostRpc'
 
 export class DesktopRuntimeHost {
+  readonly performance: DesktopPerformanceMonitor
   inspectExtension: ((id: string) => Promise<ExtensionInspection>) | null = null
+  extensionAgent: ReturnType<typeof registerExtensionIpc>['agent'] | null = null
   readonly contextPanel: ContextPanelHost
   readonly configStore: LexoraConfigStore
   readonly #environment: DesktopEnvironment
@@ -58,15 +62,15 @@ export class DesktopRuntimeHost {
     this.#environment = environment
     this.#windows = windows
     this.#browser = browser
+    this.performance = new DesktopPerformanceMonitor(() => ({ metrics: app.getAppMetrics(), proxy: this.network.activity }), environment.events.publish)
     this.configStore = new LexoraConfigStore({ configPath: environment.paths.configPath })
+    const configDiagnostics = this.configStore.onDidChange(change => environment.events.publish({ event: `settings.${change.kind.replaceAll('-', '_')}`, component: 'desktop.settings', level: change.kind.endsWith('failed') ? 'warn' : 'info', revision: change.revision, operationId: change.operationId, count: change.groups.length }))
+    this.#subscriptions.push(() => configDiagnostics.dispose())
     this.contextPanel = new ContextPanelHost(async (operation) => {
-      try {
-        await this.service.request(contextPanelRpc.recordOperation, operation)
-      }
-      catch (error) {
-        environment.diagnostics.record({ scope: 'desktop', level: 'warn', event: 'context_panel.record.failed', error })
-      }
+      await this.service.request(contextPanelRpc.recordOperation, operation)
     })
+    const panelDiagnostics = this.contextPanel.onDidChange(change => environment.events.publish({ event: change.kind === 'record' ? `context_panel.record.${change.status}` : `context_panel.${change.state.open ? 'opened' : 'closed'}`, component: 'desktop.context_panel', level: change.kind === 'record' && change.status === 'failed' ? 'warn' : 'info', operationId: change.operationId, revision: change.revision }))
+    this.#subscriptions.push(() => panelDiagnostics.dispose())
   }
 
   get config(): LexoraConfig | null {
@@ -141,15 +145,16 @@ export class DesktopRuntimeHost {
     const config = await this.configStore.read()
     this.#config = config
     this.#network = new DesktopNetwork()
+    const networkDiagnostics = this.#network.onDidChange(change => environment.events.publish({ event: `network.${change.kind}.${change.status}`, component: 'desktop.network', level: ['failed', 'degraded', 'unavailable'].includes(change.status) ? 'warn' : 'info', operationId: change.operationId, revision: change.revision, ...(change.failure ? { failure: change.failure, errorCode: 'NETWORK_START_FAILED' } : {}) }))
+    this.#subscriptions.push(() => networkDiagnostics.dispose())
     await this.#network.start(config.proxy)
-    if (this.#network.startupError)
-      environment.events.publish({ event: 'network.start_failed', component: 'desktop.network', level: 'warn', ...readDiagnosticError(this.#network.startupError) })
     this.#windowsPowerShell = currentPlatform.shell === 'powershell'
       ? await resolveWindowsPowerShell()
       : undefined
     const composition = createDesktopFeatures(currentPlatform, {
       ...nativePaths,
       diagnostics: environment.diagnostics,
+      report: event => environment.events.publish(event),
       onOpenDesktop: () => this.#windows.show(),
       paths: environment.paths,
     })
@@ -157,10 +162,26 @@ export class DesktopRuntimeHost {
     this.#service = new BuddyServiceSupervisor({
       onDiagnostic: (event) => {
         environment.diagnostics.record({ ...event, scope: 'local-service' })
-        environment.startup.observe(event, event)
       },
       bindPeer: (peer) => {
+        const sandbox = registerSandboxHostRpc(peer, {
+          buddyHome: environment.paths.buddyHome,
+          proxyUrl: this.#network!.sandboxProxyUrl,
+          ...this.#sandboxOptions(),
+        })
+        sandbox.onDidChange(event => environment.events.publish({
+          event: `sandbox.supervisor.${event.kind}`,
+          level: event.kind === 'cleanup_failed' ? 'warn' : 'info',
+          requestId: event.requestId,
+          sandboxProcess: { phase: event.kind, pid: event.pid, exitCode: event.exitCode },
+        }))
         const disposers = [
+          peer.onRequest(extensionAgentRpc.list, () => this.extensionAgent?.list() ?? []),
+          peer.onRequest(extensionAgentRpc.invoke, (input, signal) => {
+            if (!this.extensionAgent)
+              throw new Error('EXTENSION_AGENT_UNAVAILABLE')
+            return this.extensionAgent.invoke(extensionAgentInvocationSchema.parse(input), signal ?? new AbortController().signal)
+          }),
           peer.onRequest(runtimePreferencesRpc.get, () => this.#config!.runtime),
           registerExtensionAuthoringRpc(peer, (id) => {
             if (!this.inspectExtension)
@@ -172,11 +193,7 @@ export class DesktopRuntimeHost {
             return this.contextPanel.execute({ action: 'open', target: { kind: 'browser', source } }, 'harness')
           }),
           registerWebHostRpc(peer, this.#network!.authenticateProxy, this.#network!.assertAvailable),
-          registerSandboxHostRpc(peer, {
-            buddyHome: environment.paths.buddyHome,
-            proxyUrl: this.#network!.sandboxProxyUrl,
-            ...this.#sandboxOptions(),
-          }),
+          sandbox.dispose,
           registerBrowserHostRpc(peer, {
             createAdapterLease: input => this.#browser.adapter.issueLease(input),
             getHost: () => this.#browser.host,
@@ -199,6 +216,7 @@ export class DesktopRuntimeHost {
         captureStderr: output => environment.diagnostics.captureOutput('local-service', output, sourceId),
       }),
     })
+    this.#subscriptions.push(environment.startup.bindRuntime(this.#service))
     return config
   }
 
@@ -206,7 +224,7 @@ export class DesktopRuntimeHost {
     await this.#network?.apply(config.proxy)
     const previous = this.#config?.runtime
     this.#config = config
-    if (previous?.cacheWarming !== config.runtime.cacheWarming)
+    if (previous?.cacheWarming !== config.runtime.cacheWarming || previous?.modelRetryLimit !== config.runtime.modelRetryLimit)
       this.#service?.notify(runtimePreferencesRpc.changed, config.runtime)
     await Promise.all(this.#features.map(feature => feature.applyConfig(config)))
     if (app.isPackaged && this.#environment.paths.profile === 'stable')
@@ -233,6 +251,7 @@ export class DesktopRuntimeHost {
       powerMonitor.off('unlock-screen', wakeOnUnlock)
     })
     service.start()
+    this.performance.start()
     this.#subscriptions.push(installAttachmentProtocol(service))
     this.#subscriptions.push(installRendererProtocol())
   }
@@ -244,8 +263,11 @@ export class DesktopRuntimeHost {
   }
 
   async stop(): Promise<void> {
+    this.performance.stop()
     const failures: unknown[] = []
     for (const cleanup of [
+      () => this.contextPanel.dispose(),
+      () => this.configStore.dispose(),
       () => this.#service?.stop(),
       () => this.#network?.stop(),
       ...this.#features.map(feature => () => feature.stop()),

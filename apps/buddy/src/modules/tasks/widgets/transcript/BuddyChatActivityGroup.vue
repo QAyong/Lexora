@@ -2,14 +2,15 @@
 import type { ChatAgentActivityGroup } from '../../model/transcript/chatAgentActivities'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import { ChevronRight20Regular, ChevronUp20Regular, Thinking20Regular } from '@vicons/fluent'
-import { computed, nextTick, shallowRef, useTemplateRef } from 'vue'
+import { computed, nextTick, shallowRef, useId, useTemplateRef } from 'vue'
 import { useBuddyI18n } from '@/i18n/buddyI18n'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 import { presentChatActivityLayout } from '../../model/transcript/chatActivityLayout'
 import { summarizeChatActivity, summarizeChatActivityCounts } from '../../model/transcript/chatActivitySummary'
-import { canExpandChatTool, isChatToolActive, isChatToolIssue } from '../../model/transcript/chatToolDisplay'
+import { canExpandChatTool, isChatToolIssue } from '../../model/transcript/chatToolDisplay'
 import BuddyChatDisclosure from './BuddyChatDisclosure.vue'
 import BuddyChatReasoningRow from './BuddyChatReasoningRow.vue'
+import BuddyChatShimmerText from './BuddyChatShimmerText.vue'
 import BuddyChatToolDetails from './BuddyChatToolDetails.vue'
 import BuddyChatToolIcon from './BuddyChatToolIcon.vue'
 import BuddyChatToolRow from './BuddyChatToolRow.vue'
@@ -27,8 +28,14 @@ const open = shallowRef(false)
 const highlightedIssue = shallowRef<string | null>(null)
 const content = useTemplateRef<HTMLDivElement>('content')
 const header = useTemplateRef<HTMLButtonElement>('header')
-const hasHistory = computed(() => props.group.nodes.some(node => node.kind === 'tool' ? !isChatToolActive(node) : node.status !== 'running'))
-const singleTool = computed(() => props.group.toolCount === 1 && props.group.nodes.every(node => node.kind === 'tool' || node.status === 'running'))
+const bodyId = useId()
+const active = computed(() => props.group.status === 'running' || props.group.status === 'preparing')
+const stateLabel = computed(() => props.group.status === 'running'
+  ? t('desktop.chat.processToolRunning')
+  : props.group.status === 'preparing'
+    ? t('desktop.chat.progressPreparing')
+    : props.group.status === 'interrupted' ? t('desktop.chat.processToolInterrupted') : '')
+const singleTool = computed(() => props.group.nodes.length === 1 && props.group.toolCount === 1)
 const singleReasoning = computed(() => props.group.nodes.length === 1 && props.group.nodes[0]?.kind === 'reasoning')
 const layout = computed(() => presentChatActivityLayout(props.group.nodes))
 const issues = computed(() => props.group.nodes.filter(node => node.kind === 'tool' && isChatToolIssue(node)))
@@ -38,7 +45,7 @@ const summary = computed(() => summarizeChatActivity(props.group, props.language
 function toggleEntry(id: string) {
   highlightedIssue.value = null
   if (singleTool.value || singleReasoning.value)
-    open.value = true
+    open.value = props.openEntries.get(id) !== true
   emit('toggleEntry', id)
 }
 
@@ -59,8 +66,8 @@ async function revealActivity(nodeId: string) {
   await nextTick()
   if (!open.value || highlightedIssue.value !== node.id)
     return
-  const row = [...(content.value?.querySelectorAll<HTMLElement>('[data-tool-call-id]') ?? [])]
-    .find(element => element.dataset.toolCallId === node.toolCallId)
+  const row = [...(content.value?.querySelectorAll<HTMLElement>('[data-activity-node-id]') ?? [])]
+    .find(element => element.dataset.activityNodeId === node.id)
   const target = row?.querySelector<HTMLButtonElement>('button:not(:disabled)') ?? row
   target?.focus({ preventScroll: true })
   target?.scrollIntoView({ block: 'center', behavior: 'instant' })
@@ -71,31 +78,32 @@ function collapseFromBottom() {
   header.value?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
   open.value = false
 }
-
-defineExpose({ revealActivity })
 </script>
 
 <template>
   <section
-    v-show="hasHistory || open || group.toolCount > 1"
     class="buddy-chat-activity-group"
     :data-activity-id="group.id"
-    :class="{ 'is-open': open, 'is-grouped': !singleTool && !singleReasoning }"
+    :class="{ 'is-open': open, 'is-active': active, 'is-grouped': !singleTool && !singleReasoning }"
+    :data-status="group.status"
   >
     <div v-if="!singleTool && !singleReasoning" class="buddy-chat-activity-group__heading">
-      <button ref="header" class="buddy-chat-activity-group__header buddy-chat-activity-row" type="button" :aria-expanded="open" :aria-label="fullSummary || undefined" @click="open = !open">
+      <button ref="header" class="buddy-chat-activity-group__header buddy-chat-activity-row" type="button" :aria-expanded="open" :aria-controls="bodyId" :aria-label="[fullSummary, stateLabel].filter(Boolean).join(' · ')" @click="open = !open">
         <BuddyChatToolIcon v-if="summary.icon !== 'reasoning'" :icon="summary.icon" class="buddy-chat-activity-row__icon" aria-hidden="true" />
         <DesktopIcon v-else :component="Thinking20Regular" class="buddy-chat-activity-row__icon" aria-hidden="true" />
-        <span class="buddy-chat-activity-row__label">{{ summary.label }}</span>
-        <span v-if="!open && summary.target" class="buddy-chat-activity-group__target">{{ summary.target }}</span>
+        <BuddyChatShimmerText class="buddy-chat-activity-row__label" :mode="active ? 'continuous' : 'static'">
+          {{ open ? fullSummary : summary.label }}
+        </BuddyChatShimmerText>
+        <span v-if="stateLabel" class="buddy-chat-activity-group__status">{{ stateLabel }}</span>
         <DesktopIcon :component="ChevronRight20Regular" class="buddy-chat-activity-row__chevron" :class="{ 'is-open': open }" aria-hidden="true" />
       </button>
+      <span v-if="group.approvalCount" class="buddy-chat-activity-group__approval">{{ t('desktop.chat.activityApprovalCount', { count: group.approvalCount }) }}</span>
       <button v-if="group.issueCount" class="buddy-chat-activity-group__issues" type="button" @click="revealNextIssue">
         {{ t('desktop.chat.activityIssueCount', { count: group.issueCount }) }}
       </button>
     </div>
     <BuddyChatDisclosure>
-      <div v-if="open || ((singleTool || singleReasoning) && hasHistory)" ref="content" class="buddy-chat-activity-group__content">
+      <div v-if="open || singleTool || singleReasoning" :id="bodyId" ref="content" class="buddy-chat-activity-group__content">
         <template v-for="entry in layout.entries" :key="entry.id">
           <BuddyChatToolRow
             v-if="entry.kind === 'tool'"
@@ -104,19 +112,22 @@ defineExpose({ revealActivity })
             :compact-target="layout.compact.get(entry.id)?.target"
             :has-next="layout.compact.get(entry.id)?.hasNext"
             :highlighted="highlightedIssue === entry.id"
+            :animate="singleTool"
             @toggle="toggleEntry(entry.id)"
           />
           <BuddyChatDisclosure v-else-if="entry.kind === 'tool-details'">
             <BuddyChatToolDetails
               v-if="openEntries.get(entry.node.id) && canExpandChatTool(entry.node, actions.canPreviewFile)"
               :data-tool-detail-id="entry.node.toolCallId"
+              :data-action-detail-id="entry.node.invocation?.id"
               :error-code="entry.node.errorCode"
               :language="language" :presentation="entry.node.presentation"
               :status="entry.node.status" :tool-name="entry.node.toolName"
             />
           </BuddyChatDisclosure>
           <BuddyChatReasoningRow
-            v-else-if="entry.kind === 'reasoning' && entry.status !== 'running'"
+            v-else-if="entry.kind === 'reasoning'"
+            :animate="singleReasoning"
             :node="entry" :language="language" :open="openEntries.get(entry.id) === true"
             @toggle="toggleEntry(entry.id)"
           />
@@ -136,6 +147,8 @@ defineExpose({ revealActivity })
 @include activity.header;
 
 .buddy-chat-activity-group {
+  --buddy-shimmer-base: var(--buddy-text-secondary);
+  --buddy-shimmer-duration: 3s;
   min-width: 0;
 }
 
@@ -145,15 +158,17 @@ defineExpose({ revealActivity })
   gap: 6px;
 }
 
-.buddy-chat-activity-group__target {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
+.buddy-chat-activity-group__header { min-width: 0; }
+
+.buddy-chat-activity-group__status,
+.buddy-chat-activity-group__approval {
+  flex: none;
   color: var(--buddy-text-muted);
   font-size: var(--buddy-chat-tool-font-size);
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.buddy-chat-activity-group__approval { color: var(--buddy-status-warning-text); }
 
 .buddy-chat-activity-group__issues {
   flex: none;

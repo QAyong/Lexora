@@ -1,11 +1,13 @@
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent'
 import type { CallToolResult, Progress } from '@modelcontextprotocol/client'
 import type { TSchema } from 'typebox'
+import type { BuddyToolDisclosurePolicy } from '../../agent/extensions/discovery/toolDiscoveryContract'
 import type { BuddyToolClassification } from '../../approvals/toolClassification'
-import type { McpRemoteTool } from './McpClientSession'
+import type { McpCatalogTool } from './mcpEvents'
 import type { McpResultWriter } from './mcpToolResults'
 import { createHash } from 'node:crypto'
 import { defineTool } from '@earendil-works/pi-coding-agent'
+import { copyEventSnapshot } from '../../../../shared/events/eventSnapshot'
 import { mcpErrorCode } from './mcpErrors'
 import { normalizeMcpResult } from './mcpToolResults'
 
@@ -13,12 +15,13 @@ export interface CreateMcpToolsOptions {
   serverId: string
   serverName: string
   generation: number
-  callTool: (tool: McpRemoteTool, arguments_: unknown, signal?: AbortSignal, onProgress?: (progress: Progress) => void) => Promise<CallToolResult>
-  tools: readonly McpRemoteTool[]
+  callTool: (tool: McpCatalogTool, arguments_: unknown, signal?: AbortSignal, onProgress?: (progress: Progress) => void) => Promise<CallToolResult>
+  tools: readonly McpCatalogTool[]
   writeResult?: McpResultWriter
 }
 
 export interface McpToolsResult {
+  disclosure: BuddyToolDisclosurePolicy
   classifications: Map<string, BuddyToolClassification>
   diagnostics: Array<{ code: 'MCP_TOOL_INVALID', message: string }>
   tools: ToolDefinition[]
@@ -38,19 +41,28 @@ export function createMcpTools(options: CreateMcpToolsOptions): McpToolsResult {
   const classifications = new Map<string, BuddyToolClassification>()
   const diagnostics: McpToolsResult['diagnostics'] = []
   const tools: ToolDefinition[] = []
+  const disclosure: BuddyToolDisclosurePolicy = {
+    source: { kind: 'mcp', id: options.serverId, title: options.serverName },
+    exposure: 'on_demand',
+    keywords: 'mcp connector connected service 连接器 已连接 服务',
+    tools: [],
+  }
+  const metadata: { name: string, id: string, title: string }[] = []
   const names = new Set<string>()
-  for (const remoteTool of options.tools) {
+  for (const sourceTool of options.tools) {
+    const remoteTool = copyEventSnapshot(sourceTool)
     const name = createMcpToolName(options.serverId, remoteTool.name)
     if (names.has(name)) {
       diagnostics.push({ code: 'MCP_TOOL_INVALID', message: 'MCP tool names conflict' })
       continue
     }
     names.add(name)
+    metadata.push({ name, id: remoteTool.name, title: remoteTool.title ?? remoteTool.name })
     tools.push(defineTool<TSchema, McpToolDetails>({
       name,
       label: `${options.serverName} · ${remoteTool.title ?? remoteTool.name}`,
       description: `${options.serverName}: ${remoteTool.description ?? remoteTool.name}`.slice(0, 2048),
-      parameters: remoteTool.inputSchema as TSchema,
+      parameters: structuredClone(remoteTool.inputSchema) as TSchema,
       execute: async (_toolCallId, parameters, signal, onUpdate, context) => {
         const details: McpToolDetails = { connector: options.serverName, connectorTool: remoteTool.name, artifactIds: [] }
         let lastProgress = 0
@@ -76,7 +88,7 @@ export function createMcpTools(options: CreateMcpToolsOptions): McpToolsResult {
     }))
     classifications.set(name, classifyTool(options, remoteTool))
   }
-  return { classifications, diagnostics, tools }
+  return { classifications, diagnostics, tools, disclosure: { ...disclosure, tools: metadata } }
 }
 
 export function createMcpToolName(serverId: string, toolName: string): string {
@@ -85,7 +97,7 @@ export function createMcpToolName(serverId: string, toolName: string): string {
   return `mcp__${hash(serverId)}__${readable}_${hash(toolName)}`
 }
 
-function classifyTool(options: Pick<CreateMcpToolsOptions, 'generation' | 'serverId' | 'serverName'>, tool: McpRemoteTool): BuddyToolClassification {
+function classifyTool(options: Pick<CreateMcpToolsOptions, 'generation' | 'serverId' | 'serverName'>, tool: McpCatalogTool): BuddyToolClassification {
   return {
     access: 'network',
     approval: {

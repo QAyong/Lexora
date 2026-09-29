@@ -5,7 +5,6 @@ import BuddyChatShimmerText from './BuddyChatShimmerText.vue'
 defineProps<{
   active?: boolean
   label: string
-  target?: string
   detail?: string
   warning?: boolean
 }>()
@@ -15,10 +14,9 @@ defineProps<{
   <div class="buddy-chat-activity-status" :class="{ 'is-warning': warning }" role="status">
     <BuddyChatActivityLoader v-if="active" />
     <slot v-else name="icon" />
-    <BuddyChatShimmerText class="buddy-chat-activity-status__label" :mode="active ? 'continuous' : 'static'">
+    <BuddyChatShimmerText class="buddy-chat-activity-status__label" :mode="active && !warning ? 'continuous' : 'static'">
       {{ label }}
     </BuddyChatShimmerText>
-    <span v-if="target" class="buddy-chat-activity-status__target">{{ target }}</span>
     <span v-if="detail" class="buddy-chat-activity-status__detail">{{ detail }}</span>
     <slot />
   </div>
@@ -44,16 +42,6 @@ defineProps<{
   max-width: 75%;
   overflow: hidden;
   font-weight: 400;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.buddy-chat-activity-status__target {
-  min-width: 0;
-  max-width: 48ch;
-  overflow: hidden;
-  flex: 0 1 auto;
-  color: var(--buddy-text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

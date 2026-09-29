@@ -10,8 +10,16 @@ import process from 'node:process'
 import { app, Notification, shell } from 'electron'
 import { z } from 'zod'
 import buddyVersion from '../../../buddy.version.json'
+import { CONVERSATION_CHANGED, conversationSchema } from '../../../shared/conversation/conversationApi'
+import { extensionActionRpc } from '../../../shared/extensions/extensionActionApi'
+import { extensionAgentRpc } from '../../../shared/extensions/extensionAgent'
+import { extensionJsonSchema } from '../../../shared/extensions/extensionApi'
 import { EXTENSION_REVIEW_REQUEST } from '../../../shared/extensions/extensionAuthoring'
+import { extensionConditionSnapshotRpc } from '../../../shared/extensions/extensionConditionContext'
+import { providerNotifications } from '../../../shared/providers/providerApi'
+import { runNotifications } from '../../../shared/runs/runApi'
 import { spaceTextDocumentSchema } from '../../../shared/spaces/spaceFileApi'
+import { DESKTOP_IPC_CHANNELS } from '../../shared/desktopApi'
 import { registerBrowserDesktopIpc } from '../browser/registerBrowserDesktopIpc'
 import { registerContextPanelIpc } from '../context-panel/registerContextPanelIpc'
 import { createDesktopCommandExecutor } from '../desktopCommands'
@@ -26,6 +34,7 @@ import { createDesktopTray } from '../tray'
 import { registerWorkbenchIpc } from '../workbench/registerWorkbenchIpc'
 import { WorkbenchStateStore } from '../workbench/WorkbenchStateStore'
 import { registerApplicationLogIpc } from './registerApplicationLogIpc'
+import { registerPerformanceIpc } from './registerPerformanceIpc'
 import { registerStartupIpc } from './registerStartupIpc'
 
 const browserArtifactEntrySchema = z.object({
@@ -74,23 +83,33 @@ export class DesktopIntegrations {
     const windows = this.#windows
     const service = runtime.service
     const extensions = registerExtensionIpc({
+      record: this.#environment.events.publish,
       home: paths.buddyHome,
       version: buddyVersion.version,
       developmentDirectory: !app.isPackaged && paths.profile === 'test' ? process.env.LEXORA_EXTENSION_DEVELOPMENT_PATH : undefined,
       getWindow: () => windows.window,
       get: runtime.network.get,
       notificationsEnabled: () => runtime.config?.desktop.notificationsEnabled ?? true,
+      conditionRuntime: async (input, signal) => extensionConditionSnapshotRpc.response.parse(await service.request(extensionConditionSnapshotRpc.method, input, { signal, timeoutMs: 5000 })),
+      taskActions: async () => extensionActionRpc.list.response.parse(await service.request(extensionActionRpc.list.method, {})),
+      invokeTaskAction: async input => extensionActionRpc.invoke.response.parse(await service.request(extensionActionRpc.invoke.method, input, { timeoutMs: null })),
+      agentChanged: catalog => service.notify(extensionAgentRpc.changed, catalog),
+      agentRequest: async (input, signal) => extensionJsonSchema.parse(await service.request(extensionAgentRpc.request, input, { signal, timeoutMs: 120000 })),
       readText: async (target, signal) => spaceTextDocumentSchema.parse(await service.request('spaceFiles.readDocument', target, { signal })).text,
     })
     this.#subscriptions.push(extensions.dispose)
+    this.#subscriptions.push(service.onStateChange(() => extensions.conditions.invalidate({ inputs: ['runtime.models', 'runtime.task'] })))
     runtime.inspectExtension = extensions.inspect
+    runtime.extensionAgent = extensions.agent
     this.#subscriptions.push(() => {
       runtime.inspectExtension = null
+      runtime.extensionAgent = null
     })
     this.#subscriptions.push(registerWorkbenchIpc(new WorkbenchStateStore(paths.buddyHome), () => windows.window))
     this.#subscriptions.push(registerContextPanelIpc(runtime.contextPanel, () => windows.window))
-    this.#subscriptions.push(registerStartupIpc(this.#environment.startup, () => windows.window, this.#environment.events))
-    this.#subscriptions.push(registerApplicationLogIpc(new ApplicationLogReader(paths.logs, diagnostics.launchId, homedir()), () => windows.window))
+    this.#subscriptions.push(registerStartupIpc(this.#environment.startup, () => windows.window))
+    this.#subscriptions.push(registerApplicationLogIpc(new ApplicationLogReader(paths.logs, diagnostics.launchId, homedir()), () => windows.window, event => diagnostics.record(event), () => diagnostics.flushWithin(1000)))
+    this.#subscriptions.push(registerPerformanceIpc(runtime, () => windows.window, this.#environment.events.publish))
     this.#tray = createDesktopTray({
       appName: paths.appName,
       iconPath: trayIconPath,
@@ -114,6 +133,18 @@ export class DesktopIntegrations {
       request: service.request.bind(service),
     })
     this.#subscriptions.push(service.onNotification((notification) => {
+      if (notification.method === providerNotifications.changed.method)
+        extensions.conditions.invalidate({ inputs: ['runtime.models'] })
+      if (notification.method === CONVERSATION_CHANGED) {
+        const task = conversationSchema.safeParse(notification.params)
+        if (task.success)
+          extensions.conditions.invalidate({ inputs: ['runtime.task', 'runtime.models'], taskId: task.data.id })
+      }
+      if (notification.method === runNotifications.event.method) {
+        const event = runNotifications.event.params.safeParse(notification.params)
+        if (event.success && /^(?:run\.(?:started|completed|failed|cancelled)|approval\.(?:requested|resolved))$/.test(event.data.type))
+          extensions.conditions.invalidate({ inputs: ['runtime.task'] })
+      }
       if (notification.method === EXTENSION_REVIEW_REQUEST) {
         const input = z.object({ path: z.string().min(1).max(4096) }).strict().safeParse(notification.params)
         if (input.success) {
@@ -141,6 +172,11 @@ export class DesktopIntegrations {
       openFeedbackIssue: feedback => shell.openExternal(createFeedbackIssueUrl(feedback)),
       openReleasePage: url => shell.openExternal(url),
     })
+    const configNotifications = runtime.configStore.onDidChange((change) => {
+      if (change.kind === 'committed' && windows.window && !windows.window.isDestroyed())
+        windows.window.webContents.send(DESKTOP_IPC_CHANNELS.settingsChanged, change.config)
+    })
+    this.#subscriptions.push(() => configNotifications.dispose())
     this.#subscriptions.push(registerBrowserDesktopIpc({
       data: this.#browser.data,
       screenshots: this.#browser.screenshots,

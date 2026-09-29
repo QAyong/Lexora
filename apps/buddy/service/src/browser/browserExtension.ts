@@ -7,6 +7,7 @@ import type {
   BrowserStateSnapshot,
   BrowserWaitOutcome,
 } from '../../../shared/browser'
+import type { ApplicationDiagnosticReporter } from '../../../shared/diagnostics/applicationDiagnostic'
 import type { BuddyCapability } from '../agent/extensions/BuddyCapability'
 import type { BuddyInProcessExtension } from '../agent/extensions/BuddyInProcessExtension'
 import type { BrowserCapabilityServiceOptions } from './BrowserCapabilityService'
@@ -31,6 +32,7 @@ import {
   isBrowserOpenToolInput,
   isBrowserSnapshotToolInput,
 } from './browserToolContract'
+import { observeBrowserCapabilityDiagnostics } from './observeBrowserCapabilityDiagnostics'
 
 type BrowserExtensionService = Pick<BrowserCapabilityService, 'act' | 'observe' | 'open'>
 
@@ -62,16 +64,24 @@ export interface CreateBrowserExtensionOptions {
   onOpened?: () => Promise<void>
 }
 
-export function createBrowserCapability(options: BrowserCapabilityServiceOptions & Pick<CreateBrowserExtensionOptions, 'onOpened'>): BuddyCapability {
+export function createBrowserCapability(options: BrowserCapabilityServiceOptions & Pick<CreateBrowserExtensionOptions, 'onOpened'> & { report?: ApplicationDiagnosticReporter }): BuddyCapability {
   const service = new BrowserCapabilityService(options)
+  const diagnostics = options.report ? observeBrowserCapabilityDiagnostics(service, options.report) : undefined
   return {
+    async dispose() {
+      try {
+        await service.dispose()
+      }
+      finally { diagnostics?.dispose() }
+    },
     extension: createBrowserExtension({ service, getExecutionGrants: options.getExecutionGrants, onOpened: options.onOpened }),
     classify: event => classifyBrowserTool(event, service),
-    disclosure: {
-      group: 'browser',
+    disclosure: [{
+      source: { kind: 'builtin', id: 'browser', title: 'Browser' },
+      exposure: 'on_demand',
       keywords: 'browser 浏览器 网页 打开 点击 按钮 表单 输入 快照 截图 navigate click snapshot',
-      toolNames: [BROWSER_OPEN_TOOL_NAME, BROWSER_SNAPSHOT_TOOL_NAME, BROWSER_ACT_TOOL_NAME],
-    },
+      tools: [BROWSER_OPEN_TOOL_NAME, BROWSER_SNAPSHOT_TOOL_NAME, BROWSER_ACT_TOOL_NAME].map(name => ({ name })),
+    }],
   }
 }
 

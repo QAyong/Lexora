@@ -12,6 +12,13 @@ type GeneralSettingField = 'language' | 'contextPanelMode' | 'contextPanelGlobal
 
 const props = defineProps<ApplicationSettingsProps>()
 const { languageOptions, t } = useBuddyI18n(() => props.language)
+const fullAccessConfirmationText = computed(() => ({
+  acknowledgement: t('desktop.settings.runtime.fullAccessDefaultAcknowledgement'),
+  cancelLabel: t('common.cancel'),
+  confirmLabel: t('desktop.settings.runtime.fullAccessDefaultConfirm'),
+  description: t('desktop.settings.runtime.fullAccessDefaultDescription'),
+  title: t('desktop.settings.runtime.fullAccessDefaultTitle'),
+}))
 const message = useMessage()
 const pendingFields = shallowRef<ReadonlySet<GeneralSettingField>>(new Set())
 const globalPanelLabelId = useId()
@@ -161,9 +168,8 @@ async function updateSetting(field: GeneralSettingField, patch: LexoraConfigPatc
       </div>
     </section>
     <DesktopFullAccessConfirmationDialog
-      :language="language"
-      :show="fullAccessConfirmationOpen"
-      @cancel="fullAccessConfirmationOpen = false"
+      v-model:show="fullAccessConfirmationOpen"
+      :text="fullAccessConfirmationText"
       @confirm="confirmFullAccess"
     />
   </section>

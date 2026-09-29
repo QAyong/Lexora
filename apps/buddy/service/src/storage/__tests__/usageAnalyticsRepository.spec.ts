@@ -119,6 +119,7 @@ describe('usage analytics', () => {
       f.usage('retained')
       const before = f.repository.analytics(period)
       f.database.exec(`
+        DROP TABLE extension_invocations;
         DROP TABLE connector_tool_catalogs;
         DROP TABLE skill_file_cleanup;
         DROP TABLE skill_space_exclusions;
@@ -139,6 +140,8 @@ describe('usage analytics', () => {
         ALTER TABLE attachments DROP COLUMN source_path;
         ALTER TABLE composer_resources DROP COLUMN source_path;
         PRAGMA user_version = 13;
+        ALTER TABLE conversations DROP COLUMN title_source;
+        ALTER TABLE conversations DROP COLUMN title_revision;
       `)
       f.database.close()
       databases.splice(databases.indexOf(f.database), 1)

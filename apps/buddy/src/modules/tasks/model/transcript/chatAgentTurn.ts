@@ -1,4 +1,5 @@
 import type { ContextPanelOperation } from '@buddy-shared/context-panel/contextPanel'
+import type { ExtensionActionTimelineItem } from '@buddy-shared/extensions/extensionActionApi'
 import type { LocalRun, LocalRunEvent } from '@buddy-shared/runs/runApi'
 import type { BuddyToolPresentation } from '@buddy-shared/runs/runEventPresentation'
 
@@ -42,10 +43,12 @@ export interface ChatAgentToolNode {
   description: string | null
   id: string
   isError: boolean
+  invocation?: Readonly<ExtensionActionTimelineItem>
   kind: 'tool'
   presentation: BuddyToolPresentation
-  status: 'awaiting_approval' | 'completed' | 'denied' | 'failed' | 'interrupted' | 'preparing' | 'running'
-  toolCallId: string
+  progressPlacement?: 'inline'
+  status: 'awaiting_approval' | 'cancelled' | 'completed' | 'denied' | 'failed' | 'interrupted' | 'preparing' | 'running' | 'skipped'
+  toolCallId?: string
   toolName: string
   toolLabel?: string
 }
@@ -112,7 +115,7 @@ export function createChatAgentTurnReducer(
   const compactions = createChatRunCompactionReducer(run.id)
   const usage = createChatRunTokenUsageReducer(run.id)
   const reasoning = new Map<string, ChatAgentReasoningNode>()
-  const tools = new Map<string, ChatAgentToolNode>()
+  const tools = new Map<string, ChatAgentToolNode & { toolCallId: string }>()
   const approvalTools = new Map<string, string>()
   const text = new Map<string, ChatAgentNarrationNode>()
   const panels = new Map<string, ChatAgentPanelNode>()
@@ -131,6 +134,15 @@ export function createChatAgentTurnReducer(
       if (canAffectChatAgentTurn(event))
         projection = null
       apply(event)
+    }
+  }
+
+  function settleReasoning(messageId?: string, status: 'completed' | 'interrupted' = 'completed') {
+    for (const node of reasoning.values()) {
+      if (node.status === 'running' && (messageId === undefined || node.id === `reasoning:${messageId}:${node.contentIndex}`)) {
+        reasoning.set(node.id, { ...node, status })
+        projection = null
+      }
     }
   }
 
@@ -161,8 +173,11 @@ export function createChatAgentTurnReducer(
     }
     if (event.type === 'run.progress') {
       const parsed = buddyRunProgressSchema.safeParse(payload)
-      if (parsed.success)
+      if (parsed.success) {
         progress = parsed.data.phase === 'idle' ? null : parsed.data
+        if (progress?.phase === 'preparing' && progress.toolName === null)
+          settleReasoning()
+      }
       return
     }
     if (event.type.startsWith('context.compaction.')) {
@@ -176,6 +191,7 @@ export function createChatAgentTurnReducer(
       if (!messageId || contentIndex === null)
         return
       if (payload.kind === 'text') {
+        settleReasoning(messageId)
         const phase = readAssistantTextPhase(payload.phase)
         if (phase !== 'commentary')
           return
@@ -224,6 +240,7 @@ export function createChatAgentTurnReducer(
       if (event.type === 'message.block.delta') {
         reasoning.set(id, {
           ...node,
+          status: 'running',
           text: node.text + readString(payload.delta),
         })
       }
@@ -242,6 +259,7 @@ export function createChatAgentTurnReducer(
     if (event.type === 'message.delta') {
       const phase = readAssistantTextPhase(payload.phase)
       const messageId = readString(payload.messageId)
+      settleReasoning(messageId)
       const contentIndex = readNonnegativeInteger(payload.contentIndex)
       if (phase !== 'commentary' || !messageId || contentIndex === null)
         return
@@ -268,6 +286,7 @@ export function createChatAgentTurnReducer(
       const content = readPayload(payload.content)
       if (!messageId)
         return
+      settleReasoning(messageId, payload.stopReason === 'failed' || payload.stopReason === 'length' ? 'interrupted' : 'completed')
       const phase = readAssistantTextPhase(payload.phase)
       const isCommentary = phase === 'commentary'
         || (!phase && payload.stopReason === 'tool_use')
@@ -458,7 +477,7 @@ export function createChatAgentTurnReducer(
     if (projection)
       return projection
     const terminal = run.status !== 'queued' && run.status !== 'running'
-    const reasoningNodes = [...reasoning.values()].filter(node => node.text.trim())
+    const reasoningNodes = [...reasoning.values()].filter(node => node.text.trim() || (!terminal && node.status === 'running'))
     const narrationNodes = [...text.values()].filter(node => node.text.trim())
     const awaitingApproval = [...tools.values()]
       .filter(node => node.status === 'awaiting_approval')

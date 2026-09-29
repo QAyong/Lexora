@@ -5,12 +5,16 @@ import { z } from 'zod'
 import { establishWindowsRuntimeGuard } from '../../platform/windows/runtimeGuard'
 import { APPLICATION_DIAGNOSTIC_METHOD, readDiagnosticErrorCode } from '../../shared/diagnostics/applicationDiagnostic'
 import { ServiceHost } from '../../shared/lifecycle/ServiceHost'
+import { SERVICE_LIFECYCLE_METHOD } from '../../shared/lifecycle/serviceLifecycle'
+import { ServiceLifecycleSource } from '../../shared/lifecycle/ServiceLifecycleSource'
 import { ApplicationEvents } from '../../shared/observability/ApplicationEvents'
+import { observeLifecycleDiagnostics } from '../../shared/observability/lifecycleDiagnostics'
 import { OPERATING_SYSTEM } from '../../shared/platform/identifiers'
 import { toPublicRunEvent } from '../../shared/runs/publicRunEvent'
 import { runNotifications } from '../../shared/runs/runApi'
 import { buddyServiceFailureCodeSchema } from '../../shared/runtime/runtimeProtocol'
 import { startBuddyService } from './BuddyService'
+import { DiagnosticForwarder } from './diagnostics/DiagnosticForwarder'
 import { createRunEventLog } from './events/createRunEventLog'
 import { RunEventLogFatalError } from './events/RunEventFailure'
 import { startRuntimeNetwork } from './network/runtimeNetwork'
@@ -47,9 +51,13 @@ async function runBuddyService(): Promise<void> {
   let database: ReturnType<typeof openBuddyDatabase> | null = null
   let serviceServer: ReturnType<typeof createBuddyService> | null = null
   const events = new ApplicationEvents()
-  events.subscribe(event => serviceServer?.notify(APPLICATION_DIAGNOSTIC_METHOD, event))
+  const diagnostics = new DiagnosticForwarder(event => serviceServer?.notify(APPLICATION_DIAGNOSTIC_METHOD, event))
+  events.subscribe(event => diagnostics.record(event))
   const record = events.publish
-  const host = new ServiceHost(events)
+  const lifecycle = new ServiceLifecycleSource(() => record({ event: 'observer.failed', component: 'runtime.lifecycle', level: 'warn' }))
+  const host = new ServiceHost(lifecycle)
+  const stopLifecycleDiagnostics = observeLifecycleDiagnostics(host.lifecycle, events)
+  const lifecycleDelivery = host.lifecycle.onDidChange(change => serviceServer?.notify(SERVICE_LIFECYCLE_METHOD, change))
   let serviceFailureNotified = false
   let isDatabaseClosed = false
   const closeDatabase = () => {
@@ -83,6 +91,9 @@ async function runBuddyService(): Promise<void> {
       failed = true
     }
     record({ event: failed ? 'service.stop_failed' : 'service.stopped', level: failed ? 'error' : 'info', component: 'runtime.service' })
+    lifecycleDelivery.dispose()
+    stopLifecycleDiagnostics()
+    diagnostics.dispose()
     serviceServer?.close(new Error('Buddy Local Service is shutting down'))
     process.exit(failed ? 1 : exitCode)
   }
@@ -117,13 +128,7 @@ async function runBuddyService(): Promise<void> {
       const log = createRunEventLog({
         conversationsDirectory: join(buddyHome, 'conversations'),
         database: openedDatabase,
-        onEvent: event => serviceServer?.notify(runNotifications.event.method, toPublicRunEvent(event)),
-        onEventDeliveryError: (error, event) => {
-          record({ event: 'run.notification_failed', level: 'warn', runId: event.runId, errorCode: readDiagnosticErrorCode(error) })
-          process.stderr.write(
-            `Lexora Buddy run event notification failed: ${error.name} ${event.runId}#${event.sequence}\n`,
-          )
-        },
+        onObserverError: error => record({ event: 'run.observer_failed', level: 'warn', errorCode: readDiagnosticErrorCode(error) }),
         onFatalFailure: (error) => {
           record({ event: 'run.storage_failed', level: 'error', runId: error.runId, errorCode: error.code })
           notifyFailure(readBuddyServiceFailureCode(error))
@@ -138,7 +143,18 @@ async function runBuddyService(): Promise<void> {
           void shutdown(1)
         },
       })
-      defer(() => log.close())
+      const delivery = log.onDidCommit((event) => {
+        try {
+          serviceServer?.notify(runNotifications.event.method, toPublicRunEvent(event))
+        }
+        catch (error) {
+          record({ event: 'run.notification_failed', level: 'warn', runId: event.runId, errorCode: readDiagnosticErrorCode(error) })
+        }
+      })
+      defer(async () => {
+        await log.close()
+        delivery.dispose()
+      })
       return log
     }, ['runtime.database'])
     await host.step('runtime.event_replay', () => eventLog!.replayAll())
@@ -150,6 +166,7 @@ async function runBuddyService(): Promise<void> {
         eventLog: eventLog!,
         rpc: serviceServer,
         events,
+        lifecycle,
       })
       defer(() => serviceHandle!.dispose())
     })
@@ -158,6 +175,9 @@ async function runBuddyService(): Promise<void> {
   catch (error) {
     notifyFailure(readBuddyServiceFailureCode(error))
     await host.stop().catch(() => {})
+    lifecycleDelivery.dispose()
+    stopLifecycleDiagnostics()
+    diagnostics.dispose()
     serviceServer.close(new Error('Buddy Local Service startup failed'))
     closeDatabase()
     throw error

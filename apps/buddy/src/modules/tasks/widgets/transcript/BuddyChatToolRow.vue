@@ -1,46 +1,50 @@
 <script setup lang="ts">
-import type { ChatAgentToolNode } from '../../model/transcript/chatStreamingMessage'
+import type { ChatAgentToolNode } from '../../model/transcript/chatAgentTurn'
 import type { BuddyLocale } from '@/i18n/buddyI18n'
 import { ChevronRight20Regular } from '@vicons/fluent'
 import { computed } from 'vue'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 import { canExpandChatTool, describeChatTool, isChatToolActive, isChatToolIssue } from '../../model/transcript/chatToolDisplay'
+import BuddyChatShimmerText from './BuddyChatShimmerText.vue'
 import BuddyChatToolIcon from './BuddyChatToolIcon.vue'
 import { useChatContent } from './chatContentContext'
 
 const props = defineProps<{
   language: BuddyLocale
   node: ChatAgentToolNode
-  open: boolean
+  open?: boolean
   compact?: 'start' | 'continuation'
   compactTarget?: string
   hasNext?: boolean
   highlighted?: boolean
+  animate?: boolean
 }>()
 const emit = defineEmits<{ toggle: [] }>()
 const actions = useChatContent()
 const display = computed(() => describeChatTool(props.node, props.language))
 const canExpand = computed(() => canExpandChatTool(props.node, actions.canPreviewFile))
 const active = computed(() => isChatToolActive(props.node))
+const animating = computed(() => props.animate && (props.node.status === 'running' || props.node.status === 'preparing'))
 const issue = computed(() => isChatToolIssue(props.node))
 </script>
 
 <template>
-  <section class="buddy-chat-tool" :class="[`is-${node.status}`, compact && `is-compact-${compact}`, { 'is-selected': open, 'is-highlighted': highlighted }]" :data-tool-call-id="node.toolCallId" tabindex="-1">
+  <section class="buddy-chat-tool" :class="[`is-${node.status}`, compact && `is-compact-${compact}`, { 'is-selected': open, 'is-highlighted': highlighted }]" :data-activity-node-id="node.id" :data-tool-call-id="node.toolCallId" :data-action-id="node.invocation?.id" :data-action-status="node.invocation?.status" tabindex="-1">
     <button
       class="buddy-chat-tool__header buddy-chat-activity-row"
-      :aria-expanded="canExpand ? open : undefined"
+      :aria-expanded="canExpand ? open === true : undefined"
       :aria-label="[display.label, display.fullTarget, issue || active ? display.status : ''].filter(Boolean).join(' · ')"
       :disabled="!canExpand"
       type="button"
       @click="emit('toggle')"
     >
       <BuddyChatToolIcon v-if="compact !== 'continuation'" :icon="display.icon" class="buddy-chat-activity-row__icon" aria-hidden="true" />
-      <span v-if="compact !== 'continuation'" class="buddy-chat-tool__title buddy-chat-activity-row__label">{{ display.label }}</span>
-      <code v-if="display.target" class="buddy-chat-tool__summary">{{ compactTarget ?? display.target }}<span v-if="hasNext" class="buddy-chat-tool__separator" aria-hidden="true">,</span></code>
+      <BuddyChatShimmerText v-if="compact !== 'continuation'" class="buddy-chat-tool__title buddy-chat-activity-row__label" :mode="animating ? 'continuous' : 'static'">
+        {{ display.label }}
+      </BuddyChatShimmerText>
+      <span v-if="display.target" class="buddy-chat-tool__summary">{{ compactTarget ?? display.target }}<span v-if="hasNext" class="buddy-chat-tool__separator" aria-hidden="true">,</span></span>
       <span v-if="display.context && !compact" class="buddy-chat-tool__context">{{ display.context }}</span>
-      <span v-if="issue || active || node.presentation.card === 'directory-authorization' || node.presentation.card === 'system'" class="buddy-chat-tool__status" :class="{ 'is-issue': issue }">
-        <span v-if="active && node.status !== 'awaiting_approval'" class="buddy-chat-tool__spinner" aria-hidden="true" />
+      <span v-if="issue || active || node.status === 'cancelled' || node.status === 'skipped' || node.presentation.card === 'directory-authorization' || node.presentation.card === 'system'" class="buddy-chat-tool__status" :class="{ 'is-issue': issue }">
         <span>{{ display.status }}</span>
       </span>
       <DesktopIcon v-if="!compact" :component="ChevronRight20Regular" class="buddy-chat-activity-row__chevron" :class="{ 'is-open': open, 'is-hidden': !canExpand }" aria-hidden="true" />
@@ -54,6 +58,7 @@ const issue = computed(() => isChatToolIssue(props.node))
 @include activity.header;
 
 .buddy-chat-tool {
+  --buddy-shimmer-base: var(--buddy-text-secondary);
   min-width: 0;
 }
 
@@ -100,6 +105,11 @@ const issue = computed(() => isChatToolIssue(props.node))
 .buddy-chat-tool__header {
   display: flex;
   width: calc(100% + 8px);
+  align-items: baseline;
+}
+
+.buddy-chat-tool__header > :is(.buddy-chat-activity-row__icon, .buddy-chat-activity-row__chevron) {
+  align-self: center;
 }
 
 .buddy-chat-tool__title {
@@ -112,7 +122,6 @@ const issue = computed(() => isChatToolIssue(props.node))
   overflow: hidden;
   color: var(--buddy-text-primary);
   font: inherit;
-  font-family: var(--buddy-font-mono);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -123,6 +132,7 @@ const issue = computed(() => isChatToolIssue(props.node))
   overflow: hidden;
   color: var(--buddy-text-muted);
   font-size: 11.5px;
+  line-height: normal;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -133,14 +143,13 @@ const issue = computed(() => isChatToolIssue(props.node))
   align-items: center;
   gap: 5px;
   max-width: 40%;
-  margin-left: auto;
-  padding-left: 6px;
   color: var(--buddy-text-muted);
   font-size: 11px;
+  line-height: normal;
   white-space: nowrap;
 }
 
-.buddy-chat-tool__status > span:not(.buddy-chat-tool__spinner) {
+.buddy-chat-tool__status > span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -155,27 +164,5 @@ const issue = computed(() => isChatToolIssue(props.node))
 
 .buddy-chat-tool.is-awaiting_approval .buddy-chat-tool__status {
   color: var(--buddy-status-warning-text);
-}
-
-.buddy-chat-tool__spinner {
-  width: 10px;
-  height: 10px;
-  flex: none;
-  border: 1.5px solid var(--buddy-border-strong);
-  border-top-color: var(--buddy-text-secondary);
-  border-radius: 50%;
-  animation: tool-spin 900ms linear infinite;
-}
-
-@keyframes tool-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .buddy-chat-tool__spinner {
-    animation: none;
-  }
 }
 </style>

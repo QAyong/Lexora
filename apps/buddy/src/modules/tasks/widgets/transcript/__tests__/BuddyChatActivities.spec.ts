@@ -451,7 +451,7 @@ function mountTurn(nodes: ChatAgentTurnNode[], status: ChatAgentTurn['status'] =
       const navigation = useChatActivityNavigation()
       return () => h(NMessageProvider, null, { default: () => [
         h(BuddyChatAgentTurn, { ref: view => navigation.register('run', view), language: 'zh-CN', turn: turn.value }),
-        ...turn.value.status === 'running' ? [h(BuddyChatRunActivity, { language: 'zh-CN', turn: turn.value, onRevealActivity: nodeId => navigation.reveal('run', nodeId) })] : [],
+        ...turn.value.status === 'running' ? [h(BuddyChatRunActivity, { language: 'zh-CN', turn: turn.value, onRevealActivity: (nodeId: string) => navigation.reveal('run', nodeId) })] : [],
       ] })
     },
   })

@@ -1,6 +1,8 @@
 import type { RuntimeMessageTransport, RuntimeRequestHandler, RuntimeRpcPeerContract, RuntimeRpcPeerOptions } from '../../shared/runtime/rpcPeer'
 import type { RuntimeWireMessage } from '../../shared/runtime/runtimeProtocol'
 import { randomUUID } from 'node:crypto'
+import { Emitter } from '../../shared/events/Emitter'
+import { copyEventSnapshot } from '../../shared/events/eventSnapshot'
 
 import { readLocalChatErrorCode } from '../../shared/runtime/localChatError'
 import { runtimeWireMessageSchema } from '../../shared/runtime/runtimeProtocol'
@@ -11,7 +13,6 @@ interface PendingRequest {
   dispose: () => void
   reject: (error: Error) => void
   resolve: (result: unknown) => void
-  timeout: ReturnType<typeof setTimeout>
 }
 
 export class RuntimeProtocolError extends Error {
@@ -49,7 +50,7 @@ export class RuntimeRpcPeer implements RuntimeRpcPeerContract {
   readonly #defaultTimeoutMs: number
   readonly #onFatalError?: (error: Error) => void
   readonly #handlers = new Map<string, RuntimeRequestHandler>()
-  readonly #notifications = new Set<(method: string, params: unknown) => void>()
+  readonly #notifications = new Emitter<{ method: string, params: unknown }>(() => console.error('RUNTIME_NOTIFICATION_OBSERVER_FAILED'))
   readonly #pending = new Map<string, PendingRequest>()
   readonly #running = new Map<string, AbortController>()
   readonly #unsubscribe: () => void
@@ -68,8 +69,8 @@ export class RuntimeRpcPeer implements RuntimeRpcPeerContract {
   }
 
   onNotification(listener: (method: string, params: unknown) => void): () => void {
-    this.#notifications.add(listener)
-    return () => this.#notifications.delete(listener)
+    const subscription = this.#notifications.event(({ method, params }) => listener(method, params))
+    return subscription.dispose
   }
 
   onRequest(method: string, handler: RuntimeRequestHandler): () => void {
@@ -80,7 +81,7 @@ export class RuntimeRpcPeer implements RuntimeRpcPeerContract {
     return () => this.#handlers.delete(method)
   }
 
-  request(method: string, params: unknown, timeoutMs = this.#defaultTimeoutMs, signal?: AbortSignal, requestId?: string): Promise<unknown> {
+  request(method: string, params: unknown, timeoutMs: number | null = this.#defaultTimeoutMs, signal?: AbortSignal, requestId?: string): Promise<unknown> {
     if (this.#closed)
       return Promise.reject(new Error('Runtime RPC peer is closed'))
     if (signal?.aborted)
@@ -105,14 +106,16 @@ export class RuntimeRpcPeer implements RuntimeRpcPeerContract {
         }
       }
       const aborted = () => cancel(signal?.reason ?? new DOMException('Request cancelled', 'AbortError'))
-      const timeout = setTimeout(() => {
-        cancel(new RuntimeRequestTimeoutError(method))
-      }, timeoutMs)
+      const timeout = timeoutMs === null
+        ? undefined
+        : setTimeout(() => {
+            cancel(new RuntimeRequestTimeoutError(method))
+          }, timeoutMs)
       const dispose = () => {
         clearTimeout(timeout)
         signal?.removeEventListener('abort', aborted)
       }
-      this.#pending.set(id, { reject, resolve, timeout, dispose })
+      this.#pending.set(id, { reject, resolve, dispose })
       signal?.addEventListener('abort', aborted, { once: true })
       try {
         this.#transport.postMessage({ jsonrpc: '2.0', id, method, params })
@@ -132,7 +135,7 @@ export class RuntimeRpcPeer implements RuntimeRpcPeerContract {
     this.#closed = true
     this.#unsubscribe()
     this.#handlers.clear()
-    this.#notifications.clear()
+    this.#notifications.dispose()
     for (const pending of this.#pending.values()) {
       pending.dispose()
       pending.reject(reason)
@@ -223,8 +226,15 @@ export class RuntimeRpcPeer implements RuntimeRpcPeerContract {
   }
 
   #emitNotification(method: string, params: unknown): void {
-    for (const listener of this.#notifications)
-      listener(method, params)
+    let notification: { readonly method: string, readonly params: unknown }
+    try {
+      notification = copyEventSnapshot({ method, params })
+    }
+    catch {
+      this.#fail(new RuntimeProtocolError('Runtime emitted invalid notification data'))
+      return
+    }
+    this.#notifications.fire(notification)
   }
 
   #handleResponse(message: Exclude<RuntimeWireMessage, { method: string }>): void {
