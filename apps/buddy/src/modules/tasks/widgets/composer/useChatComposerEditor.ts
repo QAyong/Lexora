@@ -11,6 +11,7 @@ import { ChatComposerDocument, ChatComposerPromptDirective, ChatComposerResource
 import { useWorkbenchAnchor } from '@/shared/ui/contributions/workbenchUiContext'
 import { resolveFileIcon } from '@/shared/ui/file-icon'
 import { getChatImageLabels } from '../../model/attachments/chatAttachmentView'
+import { parseSessionReferenceClipboard } from '../../model/sessionReferenceClipboard'
 
 export function useChatComposerEditor(options: ChatComposerEditorOptions) {
   const { t } = useBuddyI18n(options.language)
@@ -130,7 +131,8 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
         const panelChanged = panelResourceIds.length !== nextPanelResourceIds.length
           || panelResourceIds.some((id, index) => id !== nextPanelResourceIds[index])
         const quotesChanged = JSON.stringify(current.state.doc.attrs.quotes) !== JSON.stringify(document.attrs.quotes)
-        if (!bodyChanged && !panelChanged && !quotesChanged)
+        const sessionReferencesChanged = JSON.stringify(current.state.doc.attrs.sessionReferences) !== JSON.stringify(document.attrs.sessionReferences)
+        if (!bodyChanged && !panelChanged && !quotesChanged && !sessionReferencesChanged)
           return
       }
 
@@ -146,6 +148,7 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
           current.view.dispatch(transaction
             .setDocAttribute('panelResourceIds', document.attrs.panelResourceIds)
             .setDocAttribute('quotes', document.attrs.quotes)
+            .setDocAttribute('sessionReferences', document.attrs.sessionReferences)
             .setMeta('addToHistory', false))
         }
         options.onTrigger(null)
@@ -196,6 +199,15 @@ export function useChatComposerEditor(options: ChatComposerEditorOptions) {
   }
 
   function handleEditorPaste(event: ClipboardEvent) {
+    const clipboardText = event.clipboardData?.getData('text/plain')
+    if (clipboardText) {
+      const parsed = parseSessionReferenceClipboard(clipboardText)
+      if (parsed) {
+        event.preventDefault()
+        options.onPasteSessionReferences(parsed.references, parsed.text)
+        return true
+      }
+    }
     const files = [...(event.clipboardData?.files ?? [])]
     if (!files.length)
       return false

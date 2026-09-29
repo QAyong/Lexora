@@ -1,5 +1,6 @@
 import type { BuddyChatCommandName } from '@buddy-shared/conversation/buddyChatCommands'
 import type { BuddyMessageQuote } from '@buddy-shared/conversation/buddyUserContent'
+import type { BuddySessionReference } from '@buddy-shared/conversation/buddyUserContent'
 import type { BuddyComposerSource } from '@buddy-shared/conversation/composerResource'
 import type { JSONContent } from '@tiptap/core'
 import type { ComposerResourceCard, UseChatComposerOptions } from './typing'
@@ -54,11 +55,26 @@ export function useChatComposer(options: UseChatComposerOptions) {
       return query.handleKeydown(event)
     },
     onPasteFiles: files => attachFiles(files, 'both', 'clipboard'),
+    onPasteSessionReferences: (references, text) => {
+      const current = editor.value
+      if (!current?.isEditable)
+        return
+      const existing = (current.state.doc.attrs.sessionReferences ?? []) as BuddySessionReference[]
+      const byId = new Map(existing.map(item => [item.id, item]))
+      for (const item of references) {
+        if (!byId.has(item.id) && byId.size < 16)
+          byId.set(item.id, item)
+      }
+      current.view.dispatch(current.state.tr.setDocAttribute('sessionReferences', [...byId.values()]))
+      if (text)
+        current.chain().focus().insertContent(text).run()
+    },
     onSubmit: submit,
     onLocateResource: options.onLocateResource,
   })
   const resourceIds = computed(() => getChatComposerResourceIds(contentJSON.value))
   const quotes = computed(() => serializedContent.value.userContent?.quotes ?? [])
+  const sessionReferences = computed(() => serializedContent.value.userContent?.sessionReferences ?? [])
   const modelInputIssue = computed(() => resolveChatComposerModelInputIssue({
     model: options.selectedModel.value,
     modelSelection: {
@@ -72,7 +88,9 @@ export function useChatComposer(options: UseChatComposerOptions) {
   const canSubmit = computed(() => isLocalCommand.value
     ? !localCommands.pending.value && !options.isSending.value
     : options.canSend.value && modelInputIssue.value === null && (
-      serializedContent.value.content.length > 0 || resourceIds.value.length > 0 || quotes.value.length > 0
+      (serializedContent.value.userContent?.sessionReferences?.length
+        ? serializedContent.value.content.length > 0
+        : serializedContent.value.content.length > 0 || resourceIds.value.length > 0 || quotes.value.length > 0)
     ) && resourceIds.value.every(id => resourceById.value.get(id)?.resource.state === 'ready'))
   const panelResources = computed(() => (contentJSON.value.attrs?.panelResourceIds as string[] ?? [])
     .flatMap(id => resourceById.value.get(id) ?? []))
@@ -136,7 +154,9 @@ export function useChatComposer(options: UseChatComposerOptions) {
   ): boolean {
     return options.canSend.value
       && modelInputIssue.value === null
-      && Boolean(serialized.content.length || submittedResourceIds.length || serialized.userContent?.quotes?.length)
+      && Boolean(serialized.userContent?.sessionReferences?.length
+        ? serialized.content.length
+        : serialized.content.length || submittedResourceIds.length || serialized.userContent?.quotes?.length)
       && submittedResourceIds.every(id => resourceById.value.get(id)?.resource.state === 'ready')
   }
 
@@ -302,8 +322,17 @@ export function useChatComposer(options: UseChatComposerOptions) {
     modelInputIssue,
     panelResources,
     quotes,
+    sessionReferences,
     addQuote: (quote: BuddyMessageQuote) => addChatQuote(editor.value, quote),
     removeQuote: (id: string) => removeChatQuote(editor.value, id),
+    removeSessionReference(id: string) {
+      const current = editor.value
+      if (!current)
+        return false
+      const values = (current.state.doc.attrs.sessionReferences ?? []) as BuddySessionReference[]
+      current.view.dispatch(current.state.tr.setDocAttribute('sessionReferences', values.filter(item => item.id !== id)))
+      return true
+    },
     removeResource,
     removePanelResource: (id: string) => editor.value && removeChatComposerPanelResource(editor.value, id),
     resourceStripResources,

@@ -1,4 +1,5 @@
 import type { BuddyComposerSource } from '@buddy-shared/conversation/composerResource'
+import type { BuddySessionReference } from '@buddy-shared/conversation/buddyUserContent'
 import type { BuddyServiceTier, BuddyThinkingLevel } from '@buddy-shared/conversation/modelSelection'
 import type { BuddyPermissionMode } from '@buddy-shared/permissions/permissionMode'
 import type { LocalProvider, LocalRuntimeModelOption } from '@buddy-shared/providers/providerApi'
@@ -47,6 +48,7 @@ export interface ChatComposerEditorOptions {
   onTrigger: (trigger: ChatComposerTrigger | null) => void
   onSuggestionKeydown: (event: KeyboardEvent) => boolean
   onPasteFiles: (files: readonly File[]) => void
+  onPasteSessionReferences: (references: readonly BuddySessionReference[], text: string) => void
   onSubmit: () => void
   onLocateResource?: (resourceId: string) => void
 }

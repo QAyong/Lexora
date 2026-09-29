@@ -13,6 +13,8 @@ import type { ImageTransformService } from './images/ImageTransformService'
 import type { PetActionService } from './pet/PetActionService'
 import type { PluginAuthoringService } from './plugins/PluginAuthoringService'
 import type { WebCapabilityService } from './web/WebCapabilityService'
+import type { ConversationRepository } from './storage/conversationRepository'
+import type { RunInputRepository } from './storage/runInputRepository'
 import { createOutputPresentationCapability } from './artifacts/outputPresentationExtension'
 import { createAutomationCapability } from './automations/automationExtension'
 import { createBrowserCapability } from './browser/browserExtension'
@@ -27,6 +29,7 @@ import { createPluginAuthoringCapability } from './plugins/pluginAuthoringCapabi
 import { createSystemHost } from './system/createSystemHost'
 import { createSystemCapability } from './system/systemExtension'
 import { createWebCapability } from './web/webExtension'
+import { createSessionAskCapability } from './agent/extensions/sessionAskExtension'
 
 export interface BuddyCapabilityServices {
   record?: ApplicationDiagnosticReporter
@@ -42,6 +45,8 @@ export interface BuddyCapabilityServices {
   imageGenerationGateway: ImageGenerationGateway
   imageTransformService: Pick<ImageTransformService, 'removeChroma'>
   webService: Pick<WebCapabilityService, 'search' | 'fetch'>
+  conversations: Pick<ConversationRepository, 'findById' | 'listMessagePage'>
+  runInputs: Pick<RunInputRepository, 'findByRunId'>
 }
 
 export function createBuddyCapabilityFactory(
@@ -83,6 +88,7 @@ export function createBuddyCapabilityFactory(
       createImageCapability(context, services),
       createImageTransformCapability({ ...context, service: services.imageTransformService }),
       createOutputPresentationCapability({ ...context, artifactService: services.artifactService }),
+      createSessionAskCapability({ conversationId: context.conversationId, getRunId: context.getRunId, conversations: services.conversations, runInputs: services.runInputs }),
       ...supported.map(create => create(context)),
     ]
     try {

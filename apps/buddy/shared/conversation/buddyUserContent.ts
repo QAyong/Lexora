@@ -6,6 +6,15 @@ export const buddyResourceIdSchema = z.string().regex(/^[A-Z0-9][\w-]{0,127}$/i)
 
 export const BUDDY_QUOTE_COUNT_LIMIT = 16
 export const BUDDY_QUOTE_TEXT_LIMIT = 32_768
+export const BUDDY_SESSION_REFERENCE_TITLE_LIMIT = 80
+export const buddySessionReferenceSchema = z.object({
+  id: buddyResourceIdSchema,
+  title: z.string().trim().min(1).max(BUDDY_SESSION_REFERENCE_TITLE_LIMIT),
+}).strict().readonly()
+export const buddySessionReferencesSchema = z.array(buddySessionReferenceSchema)
+  .max(16)
+  .readonly()
+export type BuddySessionReference = z.infer<typeof buddySessionReferenceSchema>
 
 export const buddyMessageQuoteSchema = z.object({
   id: buddyResourceIdSchema,
@@ -64,6 +73,7 @@ export const buddyUserContentV1Schema = z.object({
     'Duplicate panel resource',
   ).readonly(),
   quotes: buddyMessageQuotesSchema.optional(),
+  sessionReferences: buddySessionReferencesSchema.optional(),
   version: z.literal(1),
 }).strict().readonly()
 
@@ -163,7 +173,8 @@ export function hasBuddyUserContent(content: BuddyUserContentV1 | null | undefin
   return Boolean(
     buddyUserContentToText(content).trim()
     || getBuddyUserContentResourceIds(content).length
-    || content.quotes?.length,
+    || content.quotes?.length
+    || content.sessionReferences?.length,
   )
 }
 

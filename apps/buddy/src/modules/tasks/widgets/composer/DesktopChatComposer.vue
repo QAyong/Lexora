@@ -24,6 +24,7 @@ import WorkbenchMenu from '@/shared/ui/contributions/WorkbenchMenu.vue'
 import WorkbenchSlot from '@/shared/ui/contributions/WorkbenchSlot.vue'
 import DesktopIcon from '@/shared/ui/icon/DesktopIcon.vue'
 import ChatQuoteStrip from '../quotes/ChatQuoteStrip.vue'
+import ChatSessionReferenceStrip from './ChatSessionReferenceStrip.vue'
 import ChatComposerSourceMenu from './ChatComposerSourceMenu.vue'
 import ChatComposerSourcePicker from './ChatComposerSourcePicker.vue'
 import ComposerResourceStrip from './ComposerResourceStrip.vue'
@@ -66,8 +67,10 @@ const {
   modelInputIssue,
   resourceStripResources,
   quotes,
+  sessionReferences,
   addQuote,
   removeQuote,
+  removeSessionReference,
   removeResource,
   selectPanelSource: selectPanelResource,
   selectSuggestion,
@@ -179,6 +182,7 @@ function captureDraft(): WorkbenchMenuSelection {
   >
     <template #attachments>
       <WorkbenchSlot target="composer.accessory" class="desktop-chat-composer__accessory" />
+      <ChatSessionReferenceStrip :references="sessionReferences" :language="language" :disabled="isSending" removable @remove="removeSessionReference" />
       <ChatQuoteStrip :quotes="quotes" :language="language" :disabled="isSending" removable @remove="removeQuote" />
       <ComposerResourceStrip
         ref="resourceStrip"
