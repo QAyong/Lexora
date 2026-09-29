@@ -75,10 +75,7 @@ const agentInitials = computed(() => agentIdentity.value.initials)
 
 .buddy-chat-agent-identity__name {
   min-width: 0;
-  color: var(--buddy-chat-agent-name-color);
-  font-family: var(--buddy-font-brand);
-  font-size: var(--buddy-brand-name-font-size);
-  font-weight: var(--buddy-brand-name-font-weight);
-  line-height: var(--buddy-brand-name-line-height);
+  color: inherit;
+  font: inherit;
 }
 </style>
