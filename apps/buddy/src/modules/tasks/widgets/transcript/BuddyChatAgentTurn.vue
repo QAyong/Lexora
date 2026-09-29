@@ -18,7 +18,7 @@ import BuddyChatActionToolbar from './BuddyChatActionToolbar.vue'
 import BuddyChatAgentIdentity from './BuddyChatAgentIdentity.vue'
 import BuddyChatAgentTurnFlow from './BuddyChatAgentTurnFlow.vue'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   actionsDisabled?: boolean
   branchNavigator?: ChatMessageBranchNavigator | null
   language: BuddyLocale
@@ -26,9 +26,7 @@ const props = withDefaults(defineProps<{
   showIdentity?: boolean
   showOutcome?: boolean
   turn: ChatAgentTurn
-}>(), {
-  showIdentity: true,
-})
+}>()
 
 const emit = defineEmits<{
   activateBranch: [branchId: string]
