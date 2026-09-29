@@ -35,7 +35,14 @@ async function fixture(beforeInitialize?: (host: DesktopWindowHost) => Promise<v
     initialLaunchIntent: 'background',
   } as unknown as DesktopEnvironment)
   await beforeInitialize?.(host)
-  await host.initialize({ isQuitting: () => false, onHidden: vi.fn(), onRecoveryExhausted: vi.fn(), onWindowCreated: vi.fn() })
+  await host.initialize({
+    isQuitting: () => false,
+    minimizeToTrayOnClose: () => true,
+    onCloseToQuit: vi.fn(),
+    onHidden: vi.fn(),
+    onRecoveryExhausted: vi.fn(),
+    onWindowCreated: vi.fn(),
+  })
   return { host, window, record }
 }
 
