@@ -17,6 +17,7 @@ export const builtinSettings = {
     description: text(category === 'logs' ? 'applicationLogs.description' : category === 'usage' ? 'usageAnalytics.description' : category === 'skills' ? 'desktop.skills.description' : `desktop.settings.categoryDescription.${category}`),
   })),
   groups: [
+    { id: 'settings.general.account', module: 'settings.general', order: -10, unframed: true },
     { id: 'settings.general.general', module: 'settings.general', title: text('desktop.settings.category.general'), order: 0 },
     { id: 'settings.general.context-panel', module: 'settings.general', title: text('desktop.settings.contextPanel'), order: 10 },
     ...builtinSettingsCategories.filter(category => category !== 'general').map(category => ({
@@ -27,6 +28,7 @@ export const builtinSettings = {
     })),
   ],
   items: [
+    { id: 'settings.general.profile', group: 'settings.general.account', order: 0, kind: 'content' as const },
     ...(['language', 'contextPanelMode', 'contextPanelGlobal'] as GeneralSettingField[]).map((field, order) => ({
       id: `settings.general.${field}`,
       group: field === 'language' ? 'settings.general.general' : 'settings.general.context-panel',
