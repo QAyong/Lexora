@@ -38,8 +38,11 @@ const flow = useTemplateRef('flow')
 defineExpose({ revealActivity: (nodeId: string) => flow.value?.revealActivity(nodeId) })
 const isActive = computed(() => props.turn.status === 'queued' || props.turn.status === 'running')
 const collapsed = shallowRef(props.turn.status === 'completed')
+const manuallyChanged = shallowRef(false)
 const disclosureId = useId()
 watch(() => [isActive.value, props.turn.status === 'completed'] as const, ([active, completed]) => {
+  if (manuallyChanged.value)
+    return
   if (active)
     collapsed.value = false
   else if (completed)
@@ -51,7 +54,11 @@ const duration = computed(() => formatChatRunDuration(
   Date.now(),
 ))
 const statusLabel = computed(() => t(`run.status.${props.turn.status}`))
-const showTopProcessToggle = computed(() => props.showIdentity !== false && props.showOutcome !== false && props.turn.nodes.length > 0)
+const showTopProcessToggle = computed(() => props.showIdentity !== false && props.turn.nodes.length > 0)
+function toggleDisclosure() {
+  manuallyChanged.value = true
+  collapsed.value = !collapsed.value
+}
 const notice = computed(() => resolveChatAgentTurnNotice(
   props.turn.status,
   props.turn.failureMessage ?? null,
@@ -101,10 +108,9 @@ const actionCopyText = computed(() => resultNoticeText.value ?? statusLabel.valu
       type="button"
       :aria-expanded="!collapsed"
       :aria-controls="disclosureId"
-      :disabled="isActive"
-      @click="collapsed = !collapsed"
+      @click="toggleDisclosure"
     >
-      <BuddyChatAgentIdentity as="span" :language="language" />
+      <BuddyChatAgentIdentity v-if="showIdentity !== false" as="span" :language="language" />
       <span class="buddy-chat-agent-turn__status">
         <span class="buddy-chat-agent-turn__status-label">{{ statusLabel }}</span>
         <span class="buddy-chat-agent-turn__duration">{{ duration }}</span>
@@ -118,7 +124,7 @@ const actionCopyText = computed(() => resultNoticeText.value ?? statusLabel.valu
         <span class="buddy-chat-agent-turn__duration">{{ duration }}</span>
       </div>
     </div>
-    <div class="buddy-chat-agent-turn__divider" aria-hidden="true" />
+    <div v-if="showIdentity !== false" class="buddy-chat-agent-turn__divider" aria-hidden="true" />
     <BuddyChatAgentTurnFlow
       v-if="turn.nodes.length || failureDetailText"
       ref="flow"
@@ -132,7 +138,7 @@ const actionCopyText = computed(() => resultNoticeText.value ?? statusLabel.valu
       :nodes="turn.nodes"
       :status-label="statusLabel"
       :top-toggle="showTopProcessToggle"
-      @toggle="collapsed = !collapsed"
+      @toggle="toggleDisclosure"
     />
     <p
       v-if="resultNoticeText"
@@ -184,7 +190,7 @@ const actionCopyText = computed(() => resultNoticeText.value ?? statusLabel.valu
 .buddy-chat-agent-turn__process-toggle {
   width: 100%;
   max-width: none;
-  padding: 0 0 8px;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;

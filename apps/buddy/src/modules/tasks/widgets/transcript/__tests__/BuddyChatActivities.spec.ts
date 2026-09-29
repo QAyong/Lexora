@@ -70,7 +70,7 @@ describe('activity disclosure', () => {
     const toggle = root.querySelector<HTMLButtonElement>('.buddy-chat-agent-turn__process-toggle')!
     const content = root.querySelector<HTMLElement>('.buddy-chat-agent-turn__process-content')!
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(toggle.disabled).toBe(true)
+    expect(toggle.disabled).toBe(false)
     expect(content.style.display).not.toBe('none')
 
     turn.value = { ...turn.value, status: 'completed', completedAt: '2026-09-09T00:00:10Z' }

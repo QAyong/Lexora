@@ -84,6 +84,11 @@ const messageText = computed(() => getChatMessageDisplayText(
       v-if="showAssistantIdentity"
       :language="language"
     />
+    <div
+      v-if="showAssistantIdentity"
+      class="buddy-chat-message__divider"
+      aria-hidden="true"
+    />
     <span
       v-else-if="message.role !== 'user' && message.role !== 'assistant'"
       class="buddy-chat-message__role"
@@ -121,6 +126,11 @@ const messageText = computed(() => getChatMessageDisplayText(
 <style scoped lang="scss">
 .buddy-chat-message.is-assistant-continuation {
   row-gap: var(--buddy-chat-gap-tight);
+}
+
+.buddy-chat-message__divider {
+  min-width: 0;
+  border-top: 1px solid var(--buddy-border-subtle);
 }
 
 .buddy-chat-message.is-intermediate,
