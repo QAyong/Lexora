@@ -83,7 +83,9 @@ describe('built-in model discovery through the production runtime', () => {
     let contextWindow = remote.contextWindow
     let status = 200
     vi.stubGlobal('fetch', async (input: URL | string, init: RequestInit) => {
-      expect(String(input)).toBe(`https://pi.dev/api/models/providers/${providerId}`)
+      const url = new URL(input)
+      expect(`${url.origin}${url.pathname}`).toBe(`https://pi.dev/api/models/providers/${providerId}`)
+      expect(url.searchParams.get('types')).toBe('chat,image,classifier')
       expect(new Headers(init.headers).has('authorization')).toBe(false)
       if (status !== 200)
         return new Response(null, { status })
