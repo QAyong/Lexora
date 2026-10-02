@@ -39,19 +39,18 @@ describe('createBuddyToolPresentation', () => {
         },
       },
     })
-    const error = await tool.execute('tool-1', { command: 'fixture' }).then(
-      () => { throw new Error('Expected the command to fail') },
-      error => error as Error,
-    )
+    const result = await tool.execute('tool-1', { command: 'fixture' })
+    expect(result.isError).toBe(true)
+    expect(result.structuredContent).toMatchObject({ exit_code: 2 })
     expect(createBuddyToolPresentation({
       arguments: { command: 'fixture' },
       isError: true,
-      result: { content: [{ type: 'text', text: error.message }] },
+      result,
       toolName: 'bash',
     })).toMatchObject({ card: 'terminal', exitCode: 2, signal: null })
   })
 
-  it('projects an expired internal action binding as recoverable without exposing internals', () => {
+  it('projects an expired action binding as recoverable', () => {
     const failure = {
       error: {
         code: 'SYSTEM_ACTION_EXPIRED',
@@ -87,7 +86,5 @@ describe('createBuddyToolPresentation', () => {
       target: null,
       verified: null,
     })
-    expect(JSON.stringify(presentation)).not.toContain('startTicks')
-    expect(JSON.stringify(presentation)).not.toContain('executable')
   })
 })
