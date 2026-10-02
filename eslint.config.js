@@ -9,6 +9,7 @@ export default antfu({
 }, {
   ignores: [
     '**/.output/**',
+    'apps/buddy/native/target/**',
     '**/native-pet/target/**',
   ],
 }, {

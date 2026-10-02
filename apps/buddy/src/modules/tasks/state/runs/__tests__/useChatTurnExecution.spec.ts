@@ -60,7 +60,9 @@ describe('useChatTurnExecution cancellation ownership', () => {
       updatedAt: '2026-09-08T00:00:00.000Z',
     })
     const receipt = {
-      id: 'fresh-message', conversationId: 'conversation-a', branchId: 'branch-a',
+      id: 'fresh-message',
+      conversationId: 'conversation-a',
+      branchId: 'branch-a',
       draftReceipt: { draftId: snapshot.draftId, sourceRevision: 1, committedRevision: 2 },
     }
     f.api.chat.enqueue.mockResolvedValue(receipt)

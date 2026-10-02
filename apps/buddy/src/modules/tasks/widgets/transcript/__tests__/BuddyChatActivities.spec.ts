@@ -337,7 +337,7 @@ describe('activity disclosure', () => {
   it('shows a single finished tool directly and retains its open output when a group forms', async () => {
     const node = readTool('one', 'completed')
     const { root, turn } = mountTurn([node], 'completed')
-    expect(root.querySelectorAll('button[aria-expanded]')).toHaveLength(1)
+    expect(root.querySelectorAll('.buddy-chat-tool__header[aria-expanded]')).toHaveLength(1)
     root.querySelector<HTMLButtonElement>('.buddy-chat-tool__header')!.click()
     await nextTick()
     const tool = root.querySelector('.buddy-chat-tool')

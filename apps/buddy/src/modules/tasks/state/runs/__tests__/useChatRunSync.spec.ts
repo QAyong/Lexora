@@ -30,7 +30,8 @@ describe('useChatRunSync', () => {
       const answer = rows.find(row => row.kind === 'message' && row.message.id === 'answer')
       expect(answer?.kind === 'message' ? answer.streaming : true).toBeUndefined()
 
-      page = timelinePage([question], null, [running], [...initialEvents,
+      page = timelinePage([question], null, [running], [
+        ...initialEvents,
         { ...event(running.id, 3), type: 'message.delta', payload: { messageId: 'answer', delta: ' late text', phase: 'answer' } },
       ])
       await sync.refreshActiveConversation()

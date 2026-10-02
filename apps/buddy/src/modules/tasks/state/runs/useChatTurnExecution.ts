@@ -1,8 +1,8 @@
 import type { LocalChatApi } from '@buddy-electron/shared/localChatApi'
 import type { ParsedBuddyChatCommand } from '@buddy-shared/conversation/buddyChatCommands'
-import type { LocalChatQueueTarget } from '@buddy-shared/conversation/chatQueueApi'
 import type { BuddyUserContentV1 } from '@buddy-shared/conversation/buddyUserContent'
 import type { LocalPromptContextItem } from '@buddy-shared/conversation/chatApi'
+import type { LocalChatQueueTarget } from '@buddy-shared/conversation/chatQueueApi'
 import type { BuddyApprovalPolicy } from '@buddy-shared/permissions/approvalPolicy'
 import type { BuddyExecutionProfile } from '@buddy-shared/permissions/executionProfile'
 import type { LocalRun } from '@buddy-shared/runs/runApi'
@@ -322,8 +322,9 @@ export function useChatTurnExecution(options: UseChatTurnExecutionOptions) {
     }
     catch (error) {
       if (!isDisposed && options.session.activeConversationId.value === target.conversationId
-        && options.session.activeBranchId.value === target.branchId)
+        && options.session.activeBranchId.value === target.branchId) {
         setNormalizedError(error)
+      }
     }
   }
 

@@ -5,7 +5,6 @@ import type { LocalRun, LocalRunEvent, LocalRunOutput } from '@buddy-shared/runs
 import type { ChatRunEventBucket, ChatRunEventBuckets } from '../../model/runs/typing'
 import type { ChatRunProjectionState } from './typing'
 import { computed, shallowReactive, shallowRef } from 'vue'
-import { projectChatRunStreamingMessages } from '../../model/transcript/chatRunStreamingMessages'
 import {
   hasChatRunEventSequenceGap,
   mergeChatRunEventBuckets,
@@ -22,6 +21,7 @@ import {
   mergeTimelineEvents,
   timelineItemKey,
 } from '../../model/runs/chatTimelineMerge'
+import { projectChatRunStreamingMessages } from '../../model/transcript/chatRunStreamingMessages'
 
 export function useChatRunProjection() {
   const timelineItems = shallowRef<ReadonlyArray<LocalConversationTimelineItem>>([])
